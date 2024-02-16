@@ -14,7 +14,7 @@ url = "https://gol.gg/esports/home/"
 player_to_search = "369"
 
 driver.get(url)
-time.sleep(5)
+time.sleep(1)
 
 wait = WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.CLASS_NAME, "search")))
 search_input = driver.find_element(By.XPATH,"/html/body/div/main/div[2]/div/div[1]/div/span[2]/div/div[1]/input")
@@ -23,7 +23,9 @@ search_input.send_keys(player_to_search)
 
 search_input.send_keys(Keys.ENTER)
 
-time.sleep(5)
+time.sleep(3)
 
 print("Current URL after search:", driver.current_url)
 
+time.sleep(5)
+driver.close()
