@@ -36,16 +36,16 @@ match_list.click()
 time.sleep(3)
 
 #scraping the match history table 
-tbody_element = driver.find_element(By.XPATH, "//tbody")
+tbody_element = driver.find_element(By.XPATH, "/html/body/div/main/div[2]/div/div[3]/div/div/div/table/tbody")
 tr_elements = tbody_element.find_elements(By.XPATH, ".//tr")
 
 data = []
 
-for tr in tr_elements:
-   result = tr.find_element(By.XPATH, "/html/body/div/main/div[2]/div/div[3]/div/div/div/table/tbody/tr[1]/td[2]").text
-   kda = tr.find_element(By.XPATH, "/html/body/div/main/div[2]/div/div[3]/div/div/div/table/tbody/tr[1]/td[3]").text
-   duration = tr.find_element(By.XPATH, "/html/body/div/main/div[2]/div/div[3]/div/div/div/table/tbody/tr[1]/td[5]").text
-   date = tr.find_element(By.XPATH, "/html/body/div/main/div[2]/div/div[3]/div/div/div/table/tbody/tr[1]/td[6]").text
+for index in range(len(tr_elements)):
+   result = driver.find_element(By.XPATH, f"/html/body/div/main/div[2]/div/div[3]/div/div/div/table/tbody/tr[{index+1}]/td[2]").text
+   kda = driver.find_element(By.XPATH, f"/html/body/div/main/div[2]/div/div[3]/div/div/div/table/tbody/tr[{index+1}]/td[3]").text
+   duration = driver.find_element(By.XPATH, f"/html/body/div/main/div[2]/div/div[3]/div/div/div/table/tbody/tr[{index+1}]/td[5]").text
+   date = driver.find_element(By.XPATH, f"/html/body/div/main/div[2]/div/div[3]/div/div/div/table/tbody/tr[{index+1}]/td[6]").text
    data.append((result, kda, duration, date))
 
 df = pd.DataFrame(data, columns=["Result", "KDA", "Duration", "Date"])
