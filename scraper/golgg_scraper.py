@@ -35,4 +35,23 @@ match_list = driver.find_element(By.XPATH, "/html/body/div/main/div[2]/div/div[2
 match_list.click()
 time.sleep(3)
 
+#scraping the match history table 
+tbody_element = driver.find_element(By.XPATH, "//tbody")
+tr_elements = tbody_element.find_elements(By.XPATH, ".//tr")
+
+data = []
+
+for tr in tr_elements:
+   result = tr.find_element(By.XPATH, "/html/body/div/main/div[2]/div/div[3]/div/div/div/table/tbody/tr[1]/td[2]").text
+   kda = tr.find_element(By.XPATH, "/html/body/div/main/div[2]/div/div[3]/div/div/div/table/tbody/tr[1]/td[3]").text
+   duration = tr.find_element(By.XPATH, "/html/body/div/main/div[2]/div/div[3]/div/div/div/table/tbody/tr[1]/td[5]").text
+   date = tr.find_element(By.XPATH, "/html/body/div/main/div[2]/div/div[3]/div/div/div/table/tbody/tr[1]/td[6]").text
+   data.append((result, kda, duration, date))
+
+df = pd.DataFrame(data, columns=["Result", "KDA", "Duration", "Date"])
+
+csv_file_path = "test.csv"
+
+df.to_csv(csv_file_path, index=False)
+
 driver.close()
