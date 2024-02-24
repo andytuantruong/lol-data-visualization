@@ -45,11 +45,12 @@ data = []
 for index in range(len(tr_elements)):
    result = driver.find_element(By.XPATH, f"/html/body/div/main/div[2]/div/div[3]/div/div/div/table/tbody/tr[{index+1}]/td[2]").text
    kda = driver.find_element(By.XPATH, f"/html/body/div/main/div[2]/div/div[3]/div/div/div/table/tbody/tr[{index+1}]/td[3]").text
+   kills, deaths, assists = kda.split('/')
    duration = driver.find_element(By.XPATH, f"/html/body/div/main/div[2]/div/div[3]/div/div/div/table/tbody/tr[{index+1}]/td[5]").text
    date = driver.find_element(By.XPATH, f"/html/body/div/main/div[2]/div/div[3]/div/div/div/table/tbody/tr[{index+1}]/td[6]").text
-   data.append((result, kda, duration, date))
+   data.append((result, kills, deaths, assists, duration, date))
 
-df = pd.DataFrame(data, columns=["Result", "KDA", "Duration", "Date"])
+df = pd.DataFrame(data, columns=["Result", "Kills", "Deaths", "Assists", "Duration", "Date"])
 
 folder_path = "player_csv"
 
