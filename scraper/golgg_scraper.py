@@ -1,6 +1,7 @@
 import requests
 import time
 import pandas as pd
+import os
 
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
@@ -50,7 +51,12 @@ for index in range(len(tr_elements)):
 
 df = pd.DataFrame(data, columns=["Result", "KDA", "Duration", "Date"])
 
-csv_file_path = "test.csv"
+folder_path = "player_csv"
+
+if not os.path.exists(folder_path):
+    os.makedirs(folder_path)
+
+csv_file_path = os.path.join(folder_path, player_to_search + ".csv")
 
 df.to_csv(csv_file_path, index=False)
 
