@@ -34,10 +34,13 @@ def clean_txt_to_csv(input_txt_file, output_csv_file, headers):
 
 input_txt_file = 'input_pp.txt'
 output_csv_file = 'output.csv'
-headers = ['Name', 'Name_remove', 'Team', 'VS', 'prop', 'map_count', 'less', 'more']
+headers = ['Name', 'Name_Duplicate', 'Team', 'VS', 'prop', 'map_count', 'less', 'more']
 
 clean_txt_to_csv(input_txt_file, output_csv_file, headers)
 
 duplicate_remove_csv = 'output.csv'
-column_name = 'Name_remove'
-remove_column(duplicate_remove_csv, column_name)
+remove_column(duplicate_remove_csv, 'Name_Duplicate')
+remove_column(duplicate_remove_csv, 'Team')
+remove_column(duplicate_remove_csv, 'VS')
+remove_column(duplicate_remove_csv, 'less')
+remove_column(duplicate_remove_csv, 'more')
