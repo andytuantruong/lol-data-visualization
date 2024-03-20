@@ -34,7 +34,7 @@ def clean_txt_to_csv(input_txt_file, output_csv_file, headers):
 
 input_txt_file = 'input_pp.txt'
 output_csv_file = 'output.csv'
-headers = ['Name', 'Name_Duplicate', 'Team', 'VS', 'prop', 'map_count', 'less', 'more']
+headers = ['Name', 'Team', 'Name_Duplicate', 'VS', 'prop', 'map_count', 'less', 'more']
 
 clean_txt_to_csv(input_txt_file, output_csv_file, headers)
 
