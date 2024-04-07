@@ -1,0 +1,368 @@
+Kingen
+DK - TOP
+Kingen
+vs T1 Sat 11:00pm
+5.5
+MAPS 1-3 Kills
+LESS
+MORE
+Lucid
+DK - JNG
+Lucid
+vs T1 Sat 11:00pm
+5.0
+MAPS 1-3 Kills
+LESS
+MORE
+ShowMaker
+DK - MID
+ShowMaker
+vs T1 Sat 11:00pm
+9.0
+MAPS 1-3 Kills
+LESS
+MORE
+Aiming
+DK - BOT
+Aiming
+vs T1 Sat 11:00pm
+11.0
+MAPS 1-3 Kills
+LESS
+MORE
+Kellin
+DK - SUP
+Kellin
+vs T1 Sat 11:00pm
+1.5
+MAPS 1-3 Kills
+LESS
+MORE
+Zeus
+T1 - TOP
+Zeus
+vs DK Sat 11:00pm
+9.0
+MAPS 1-3 Kills
+LESS
+MORE
+Oner
+T1 - JNG
+Oner
+vs DK Sat 11:00pm
+7.5
+MAPS 1-3 Kills
+LESS
+MORE
+Faker
+T1 - MID
+Faker
+vs DK Sat 11:00pm
+9.5
+MAPS 1-3 Kills
+LESS
+MORE
+Gumayusi
+T1 - BOT
+Gumayusi
+vs DK Sat 11:00pm
+12.0
+MAPS 1-3 Kills
+LESS
+MORE
+Keria
+T1 - SUP
+Keria
+vs DK Sat 11:00pm
+3.0
+MAPS 1-3 Kills
+LESS
+MORE
+Evi
+SHG - TOP
+Evi
+vs PSG Sun 2:00am
+7.5
+MAPS 1-3 Kills
+LESS
+MORE
+Forest
+SHG - JNG
+Forest
+vs PSG Sun 2:00am
+5.5
+MAPS 1-3 Kills
+LESS
+MORE
+DasheR
+SHG - MID
+DasheR
+vs PSG Sun 2:00am
+9.5
+MAPS 1-3 Kills
+LESS
+MORE
+Marble
+SHG - BOT
+Marble
+vs PSG Sun 2:00am
+10.0
+MAPS 1-3 Kills
+LESS
+MORE
+Azhi
+PSG - TOP
+Azhi
+vs SHG Sun 2:00am
+9.0
+MAPS 1-3 Kills
+LESS
+MORE
+JunJia
+PSG - JNG
+JunJia
+vs SHG Sun 2:00am
+10.5
+MAPS 1-3 Kills
+LESS
+MORE
+Maple
+PSG - MID
+Maple
+vs SHG Sun 2:00am
+11.5
+MAPS 1-3 Kills
+LESS
+MORE
+Betty
+PSG - BOT
+Betty
+vs SHG Sun 2:00am
+17.0
+MAPS 1-3 Kills
+LESS
+MORE
+Flandre
+JDG - TOP
+Flandre
+vs TES Sun 3:00am
+6.5
+MAPS 1-3 Kills
+LESS
+MORE
+Kanavi
+JDG - JNG
+Kanavi
+vs TES Sun 3:00am
+8.5
+MAPS 1-3 Kills
+LESS
+MORE
+Yagao
+JDG - MID
+Yagao
+vs TES Sun 3:00am
+9.0
+MAPS 1-3 Kills
+LESS
+MORE
+Ruler
+JDG - BOT
+Ruler
+vs TES Sun 3:00am
+12.0
+MAPS 1-3 Kills
+LESS
+MORE
+MISSING
+JDG - SUP
+MISSING
+vs TES Sun 3:00am
+1.5
+MAPS 1-3 Kills
+LESS
+MORE
+369
+TES - TOP
+369
+vs JDG Sun 3:00am
+7.5
+MAPS 1-3 Kills
+LESS
+MORE
+Tian
+TES - JNG
+Tian
+vs JDG Sun 3:00am
+7.0
+MAPS 1-3 Kills
+LESS
+MORE
+Creme
+TES - MID
+Creme
+vs JDG Sun 3:00am
+9.0
+MAPS 1-3 Kills
+LESS
+MORE
+JackeyLove
+TES - BOT
+JackeyLove
+vs JDG Sun 3:00am
+12.0
+MAPS 1-3 Kills
+LESS
+MORE
+Meiko
+TES - SUP
+Meiko
+vs JDG Sun 3:00am
+2.0
+MAPS 1-3 Kills
+LESS
+MORE
+Adam
+BDS - TOP
+Adam
+vs G2 Sun 8:00am
+7.0
+MAPS 1-3 Kills
+LESS
+MORE
+Sheo
+BDS - JNG
+Sheo
+vs G2 Sun 8:00am
+5.5
+MAPS 1-3 Kills
+LESS
+MORE
+nuc
+BDS - MID
+nuc
+vs G2 Sun 8:00am
+8.5
+MAPS 1-3 Kills
+LESS
+MORE
+Ice
+BDS - BOT
+Ice
+vs G2 Sun 8:00am
+10.5
+MAPS 1-3 Kills
+LESS
+MORE
+Labrov
+BDS - SUP
+Labrov
+vs G2 Sun 8:00am
+1.5
+MAPS 1-3 Kills
+LESS
+MORE
+BrokenBlade
+G2 - TOP
+BrokenBlade
+vs BDS Sun 8:00am
+9.0
+MAPS 1-3 Kills
+LESS
+MORE
+Yike
+G2 - JNG
+Yike
+vs BDS Sun 8:00am
+9.5
+MAPS 1-3 Kills
+LESS
+MORE
+Caps
+G2 - MID
+Caps
+vs BDS Sun 8:00am
+11.0
+MAPS 1-3 Kills
+LESS
+MORE
+Hans Sama
+G2 - BOT
+Hans Sama
+vs BDS Sun 8:00am
+14.0
+MAPS 1-3 Kills
+LESS
+MORE
+Mikyx
+G2 - SUP
+Mikyx
+vs BDS Sun 8:00am
+2.0
+MAPS 1-3 Kills
+LESS
+MORE
+Wizer
+PNG - TOP
+Wizer
+vs LLL Sun 9:00am
+8.0
+MAPS 1-3 Kills
+LESS
+MORE
+Cariok
+PNG - JNG
+Cariok
+vs LLL Sun 9:00am
+5.0
+MAPS 1-3 Kills
+LESS
+MORE
+dyNquedo
+PNG - MID
+dyNquedo
+vs LLL Sun 9:00am
+9.5
+MAPS 1-3 Kills
+LESS
+MORE
+TitaN
+PNG - BOT
+TitaN
+vs LLL Sun 9:00am
+13.0
+MAPS 1-3 Kills
+LESS
+MORE
+Robo
+LLL - TOP
+Robo
+vs PNG Sun 9:00am
+9.0
+MAPS 1-3 Kills
+LESS
+MORE
+Croc
+LLL - JNG
+Croc
+vs PNG Sun 9:00am
+7.0
+MAPS 1-3 Kills
+LESS
+MORE
+tinowns
+LLL - MID
+tinowns
+vs PNG Sun 9:00am
+10.0
+MAPS 1-3 Kills
+LESS
+MORE
+Route
+LLL - BOT
+Route
+vs PNG Sun 9:00am
+14.0
+MAPS 1-3 Kills
+LESS
+MORE
