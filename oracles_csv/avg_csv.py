@@ -1,18 +1,21 @@
 import pandas as pd
 
-output_data = pd.read_csv('~/OneDrive/Documents/lol data visualization/parser/output.csv')
-data = pd.read_csv('lec_march10.csv')
+pd.set_option('display.max_rows', None)
 
-extracted_data = data[['Player', 'GP', 'K']].copy()
+output_data = pd.read_csv('~/OneDrive/Documents/lol data visualization/oracles_csv/output.csv')
+data = pd.read_csv('lck_sep9.csv') 
 
-#accounting for two maps played
-extracted_data['Avg'] = (extracted_data['K'] / extracted_data['GP'])
+extracted_data = data[['Player', 'GP', 'K']].copy() 
 
+# change for amount of maps played
+maps_played = 3
+
+extracted_data['Projected Kills'] = (extracted_data['K'] / extracted_data['GP']) * maps_played
 combined_data = pd.merge(extracted_data, output_data[['Name', 'prop']], how='left', 
                          left_on=extracted_data['Player'].str.lower(), 
                          right_on=output_data['Name'].str.lower())
 
-combined_data['Difference'] = combined_data['Avg'] - combined_data['prop']
+combined_data['Difference'] = combined_data['Projected Kills'] - combined_data['prop']
 combined_data = combined_data.sort_values(by='Difference', ascending=False)
 combined_data.drop(columns=['key_0'], inplace=True)
 
