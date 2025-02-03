@@ -25,7 +25,7 @@ def create_figure(df, player_name):
     df["date_display"] = df["date"].dt.strftime("%m/%d/%Y")
     df["datetime_full"] = df["date"].dt.strftime("%m/%d/%Y %H:%M")
     
-    # Make sure dates are unique based on time match is played
+    # Make sure dates are unique based on time match is played in order
     df = df.reset_index(drop=True)
     df["x_position"] = df.groupby("date_display").cumcount()
     df["x_display"] = df.apply(lambda row: 
