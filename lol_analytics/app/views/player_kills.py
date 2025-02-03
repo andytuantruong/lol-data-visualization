@@ -1,9 +1,10 @@
 import os
 import pandas as pd
 import plotly.graph_objects as go
-from dash import Dash, dcc, html, Input, Output
+from dash import html, dcc
 
-PLAYER_DATA_DIR = "../../data/processed/players"
+# Get absolute path to the data directory
+PLAYER_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data", "processed", "players")
 
 def get_player_list():
     try:
@@ -17,133 +18,100 @@ def get_player_list():
 
 def create_figure(df, player_name):
     df["date"] = pd.to_datetime(df["date"])
-    df = df.sort_values("date")
-    df = df.dropna(subset=["kills", "deaths", "assists"])
-    df["datetime_formatted"] = df["date"].dt.strftime("%m/%d/%Y %H:%M")
+    df = df.sort_values("date")  # Sort by full datetime
+    df = df.dropna(subset=["kills"])
+    
+    # Create display formats
+    df["date_display"] = df["date"].dt.strftime("%m/%d/%Y")
+    df["datetime_full"] = df["date"].dt.strftime("%m/%d/%Y %H:%M")
+    
+    # Make sure dates are unique based on time match is played
+    df = df.reset_index(drop=True)
+    df["x_position"] = df.groupby("date_display").cumcount()
+    df["x_display"] = df.apply(lambda row: 
+        f"{row['date_display']} (1)" if row["x_position"] == 0 
+        else f"{row['date_display']} ({row['x_position'] + 1})", axis=1)
 
-    max_y = df["kills"].max() * 1.2  # Adjust max y-axis for visibility
+    max_y = df["kills"].max() * 1.2
 
     fig = go.Figure()
-
-    # Main visible bars (Kills)
     fig.add_trace(go.Bar(
-        x=df["datetime_formatted"],
+        x=df["x_display"], 
         y=df["kills"],
-        name="Kills",
         text=df["kills"],
         textposition="outside",
         marker=dict(color="blue"),
-        customdata=df[["kills", "deaths", "assists"]].values,
+        customdata=df["datetime_full"],
         hovertemplate="<br>".join([
-            "Date & Time: %{x}",
-            "Kills: %{customdata[0]}",
-            "Deaths: %{customdata[1]}",
-            "Assists: %{customdata[2]}",
+            "Date & Time: %{customdata}",
+            "Kills: %{y}",
             "<extra></extra>"
         ])
     ))
 
-    # Transparent overlay bars extending to top with neon yellow border
-    fig.add_trace(go.Bar(
-        x=df["datetime_formatted"],
-        y=[max_y] * len(df),  # Bars extend to top of graph
-        marker=dict(
-            color="rgba(0,0,0,0)",  # Invisible fill
-            line=dict(  # Visible border
-                width=2,  # Increased width for visibility
-                color="rgba(255,255,0,1)"  # Fully opaque neon yellow
-            )
-        ),
-        customdata=df[["kills", "deaths", "assists"]].values,
-        hovertemplate="<br>".join([
-            "Date & Time: %{x}",
-            "Kills: %{customdata[0]}",
-            "Deaths: %{customdata[1]}",
-            "Assists: %{customdata[2]}",
-            "<extra></extra>"
-        ]),
-        showlegend=False,
-        width=0.8  # Match width with the blue bars
-    ))
-
     fig.update_layout(
         title=f"{player_name} - Kills",
+        title_x=0.5,
+        title_font=dict(size=20),
         xaxis_title="Date",
         yaxis_title="Kills",
         showlegend=False,
+        plot_bgcolor='white',
+        paper_bgcolor='white',
         xaxis=dict(
-            type="category",
-            tickmode="array",
-            tickvals=df["datetime_formatted"],
+            showgrid=True,
+            gridcolor='rgba(128, 128, 128, 0.1)',
             tickangle=-45,
-            fixedrange=True  # Disable zoom/pan on x-axis
+            fixedrange=True,
+            tickfont=dict(color='black'),
+            title_font=dict(size=14)
         ),
         yaxis=dict(
+            showgrid=True,
+            gridcolor='rgba(128, 128, 128, 0.1)',
             range=[0, max_y],
-            fixedrange=True  # Disable zoom/pan on y-axis
+            fixedrange=True,
+            tickfont=dict(color='black'),
+            zeroline=False,
+            title_font=dict(size=14)
         ),
-        margin=dict(b=100),
+        margin=dict(
+            l=50,
+            r=20,
+            t=40,
+            b=80
+        ),
+        height=400,
+        width=800,
+        autosize=False,
         hoverlabel=dict(
-            bgcolor="white",
+            bgcolor='white',
             font_size=12,
-            font_family="Arial"
-        ),
-        autosize=True,  # Enable responsive sizing
-        dragmode=False,  # Disable all dragging interactions
-        barmode='overlay'  # Ensure bars overlay each other
-    )
-
-    # Update bar spacing using update_traces for the blue bars only
-    fig.update_traces(
-        marker_line_width=0,  # Remove bar borders
-        selector=dict(marker_color="blue")  # Only apply to blue bars
+            font_color='black'
+        )
     )
 
     return fig
 
-app = Dash(__name__)
+def create_layout():
+    players = get_player_list()
+    if not players:
+        raise SystemExit("No player data found")
 
-players = get_player_list()
-if not players:
-    raise SystemExit("No player data found")
-
-app.layout = html.Div([
-    html.H1("League of Legends Player Kills", style={'textAlign': 'center'}),
-    html.Div([
-        dcc.Dropdown(
-            id="player-dropdown",
-            options=[{"label": player, "value": player} for player in players],
-            value=players[0],
-            placeholder="Select a player",
-            style={'width': '50%', 'margin': '0 auto', 'marginBottom': '20px'}
-        ),
-        dcc.Graph(
-            id="kills-graph",
-            config={'displayModeBar': False},  # Hide the mode bar with zoom and other controls
-            style={
-                'width': '80vw',  # 80% of viewport width
-                'height': '70vh',  # 70% of viewport height
-                'margin': '0 auto',  # Center the graph
-                'border': '1px solid #ddd',  # Add a subtle border
-                'borderRadius': '8px',  # Rounded corners
-                'padding': '20px',  # Add some padding
-                'boxShadow': '0 2px 4px rgba(0,0,0,0.1)'  # Add a subtle shadow
-            }
-        )
-    ], style={'display': 'flex', 'flexDirection': 'column', 'alignItems': 'center'})
-])
-
-@app.callback(
-    Output("kills-graph", "figure"),
-    Input("player-dropdown", "value")
-)
-def update_graph(selected_player):
-    try:
-        df = pd.read_csv(f"{PLAYER_DATA_DIR}/{selected_player}.csv")
-        return create_figure(df, selected_player)
-    except Exception as e:
-        print(f"Error creating graph for {selected_player}: {e}")
-        return go.Figure()
-
-if __name__ == "__main__":
-    app.run_server(debug=True)
+    return html.Div([
+        html.H1("League of Legends Player Kills", className='page-title'),
+        html.Div([
+            dcc.Dropdown(
+                id="player-dropdown",
+                options=[{"label": player, "value": player} for player in players],
+                value=players[0],
+                placeholder="Select a player",
+                className='dropdown-container'
+            ),
+            dcc.Graph(
+                id="kills-graph",
+                config={'displayModeBar': False},
+                className='graph-container'
+            )
+        ], className='content-container')
+    ], className='body-container')
