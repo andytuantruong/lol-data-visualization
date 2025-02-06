@@ -1,5 +1,9 @@
 import pandas as pd
 from pathlib import Path
+import os
+
+# Get the absolute path to the project root directory
+PROJECT_ROOT = Path(__file__).parent.parent.parent
 
 def extract(input_path):
     try:
@@ -19,17 +23,17 @@ def transform(df):
     try:
         # Select relevant columns
         columns_to_keep = [
-            "gameid", "date", "side", "position", "playername", "playerid", 
-            "teamname", "teamid", "champion", "gamelength", "kills", "deaths", 
-            "assists", "result", "league"
+            "gameid", "league", "year", "date", "side", "playername", "playerid", 
+            "teamname", "teamid", "champion", "gamelength", "kills", 
+            "deaths", "assists", "result"
         ]
         df = df[columns_to_keep]
 
         # Drop rows with missing critical fields
-        df.dropna(subset=["kills", "deaths", "assists", "date", "playername", "side", "position"], inplace=True)
+        df = df.loc[~df[["kills", "deaths", "assists", "date", "playername", "playerid"]].isnull().any(axis=1)]
 
         # Convert date to datetime
-        df["date"] = pd.to_datetime(df["date"])
+        df["date"] = pd.to_datetime(df["date"], errors='coerce')
 
         print("Data transformation complete.")
         return df
@@ -72,16 +76,15 @@ def etl_pipeline(input_path, output_path, player_output_dir=None):
 
     load(cleaned_df, output_path)
 
-    # organize by player
+    # Organize by player
     if player_output_dir:
         organize_by_player(cleaned_df, player_output_dir)
 
 if __name__ == "__main__":
-    # Define input and output paths using Path
-    input_path = Path("../data/raw/2025_LoL_esports_match_data_from_OraclesElixir.csv")
-    output_path = Path("../data/processed/cleaned_data.csv")
-    player_output_dir = Path("../data/processed/players")
+    # Define input and output paths using absolute paths
+    input_path = PROJECT_ROOT / "data" / "raw" / "2025_LoL_esports_match_data_from_OraclesElixir.csv"
+    output_path = PROJECT_ROOT / "data" / "processed" / "cleaned_data.csv"
+    player_output_dir = PROJECT_ROOT / "data" / "processed" / "players"
 
-    # Run the ETL pipeline
     etl_pipeline(input_path, output_path, player_output_dir)
     print("ETL pipeline complete.")
