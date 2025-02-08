@@ -10,7 +10,8 @@ def extract(input_path):
         # Load raw data, specifying dtype for certain columns to avoid mixed type warning
         dtype_spec = {
             'side': str, 
-            'position': str
+            'position': str,
+            'playername': str
         }
         df = pd.read_csv(input_path, dtype=dtype_spec, low_memory=False)
         print(f"Data extracted from {input_path}")
@@ -30,16 +31,55 @@ def transform(df):
         df = df[columns_to_keep]
 
         # Drop rows with missing critical fields
-        df = df.loc[~df[["kills", "deaths", "assists", "date", "playername", "playerid"]].isnull().any(axis=1)]
+        df = df.dropna(subset=["kills", "deaths", "assists", "date", "playername", "playerid"])
 
-        # Convert date to datetime
-        df["date"] = pd.to_datetime(df["date"], errors='coerce')
+        df["date"] = pd.to_datetime(df["date"])
+        df = df.drop_duplicates()
+        df = add_opponent_info(df)
+
+        # Verify no duplicates after opponent mapping
+        df = df.drop_duplicates(subset=[
+            'gameid', 'date', 'playername', 'teamname', 'kills', 'deaths', 'assists'
+        ])
 
         print("Data transformation complete.")
         return df
     except Exception as e:
         print(f"Error transforming data: {e}")
         return None
+
+def add_opponent_info(df):
+    # Filter out rows with missing team information
+    df_with_teams = df[df["teamname"].notna() & (df["teamname"] != "unknown team")].copy()
+    
+    # Create a copy of relevant columns for merging
+    opponent_info = df_with_teams[["gameid", "side", "teamname", "teamid"]].copy()
+    
+    # Map Blue->Red and Red->Blue for joining
+    opponent_info["opponent_side"] = opponent_info["side"].map({"Blue": "Red", "Red": "Blue"})
+    
+    # Rename columns to approproiate names
+    opponent_info = opponent_info.rename(columns={
+        "teamname": "opponent_teamname",
+        "teamid": "opponent_teamid",
+        "side": "opponent_side_original"
+    })
+    
+    # Merge the opponent information based on gameid and opposite side
+    df = df.merge(
+        opponent_info[["gameid", "opponent_side", "opponent_teamname", "opponent_teamid"]],
+        left_on=["gameid", "side"],
+        right_on=["gameid", "opponent_side"],
+        how="left"
+    )
+    
+    # For rows without opponent info (like unknown teams), set a default value
+    df["opponent_teamname"] = df["opponent_teamname"].fillna("Unknown Opponent")
+    
+    # Drop the temporary merge column
+    df = df.drop("opponent_side", axis=1)
+    
+    return df
 
 def load(df, output_path):
     try:
