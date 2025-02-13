@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>LoL Esports Analytics</title>
+    <link rel="stylesheet" href="css/styles.css" />
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <div class="title-section">
+          <div class="player-stats">
+            <h1>
+              <span class="stat-icon">🎮</span>
+              <span id="player-name">Select Player</span> - Kills
+            </h1>
+            <div class="stats-summary">
+              <div class="stat">
+                <span>Average:</span>
+                <span id="average-kills" class="highlight">--</span>
+              </div>
+              <div class="stat">
+                <span>Median:</span>
+                <span id="median-kills" class="highlight">--</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="controls">
+          <select id="player-dropdown">
+            <option value="">Select a player...</option>
+          </select>
+          <div class="input-group">
+            <label for="min-kills">Min Kills:</label>
+            <input type="number" id="min-kills" min="0" value="0" />
+          </div>
+        </div>
+      </div>
+      <div id="chart-container"></div>
+    </div>
+    <script src="js/dataLoader.js"></script>
+    <script src="js/chart.js"></script>
+    <script src="js/main.js"></script>
+  </body>
+</html>
