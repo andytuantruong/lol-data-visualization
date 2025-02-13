@@ -7,8 +7,13 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
     <title>LoL Esports Analytics</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css"
+    />
     <link rel="stylesheet" href="css/styles.css" />
     <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
       rel="stylesheet"
@@ -21,16 +26,17 @@
           <div class="player-stats">
             <h1>
               <span class="stat-icon">🎮</span>
-              <span id="player-name">Select Player</span> - Kills
+              <span id="player-name">Select Player</span> -
+              <span id="metric-display">Kills</span>
             </h1>
             <div class="stats-summary">
               <div class="stat">
                 <span>Average:</span>
-                <span id="average-kills" class="highlight">--</span>
+                <span id="average-metric" class="highlight">--</span>
               </div>
               <div class="stat">
                 <span>Median:</span>
-                <span id="median-kills" class="highlight">--</span>
+                <span id="median-metric" class="highlight">--</span>
               </div>
             </div>
           </div>
@@ -39,9 +45,14 @@
           <select id="player-dropdown">
             <option value="">Select a player...</option>
           </select>
+          <select id="metric-dropdown">
+            <option value="kills">Kills</option>
+            <option value="deaths">Deaths</option>
+            <option value="assists">Assists</option>
+          </select>
           <div class="input-group">
-            <label for="min-kills">Min Kills:</label>
-            <input type="number" id="min-kills" min="0" value="0" />
+            <label for="min-metric">Min Value:</label>
+            <input type="number" id="min-metric" min="0" value="0" />
           </div>
         </div>
       </div>

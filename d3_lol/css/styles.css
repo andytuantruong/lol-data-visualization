@@ -118,7 +118,7 @@ body {
     padding: 10px;
   }
 
-  .kill-label {
+  .metric-label {
     font-size: 10px;
   }
 
@@ -139,7 +139,7 @@ svg {
   gap: 10px;
 }
 
-#min-kills {
+#min-metric {
   width: 60px;
   padding: 8px;
   background-color: #1a1a1a;
@@ -167,7 +167,7 @@ svg {
   opacity: 0.8;
 }
 
-.kill-label {
+.metric-label {
   fill: #fff;
   font-size: 12px;
 }

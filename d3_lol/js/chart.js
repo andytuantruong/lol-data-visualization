@@ -1,4 +1,4 @@
-class KillsChart {
+class MetricsChart {
   constructor(containerId) {
     this.container = d3.select(containerId);
     this.margin = {
@@ -58,9 +58,10 @@ class KillsChart {
     return gamesOnSameDay.length > 1 ? ` (${index + 1})` : '';
   }
 
-  update(data, playerName) {
+  update(data, playerName, metric) {
     this.currentData = data;
     this.currentPlayerName = playerName;
+    this.currentMetric = metric;
 
     this.svg.selectAll('*').remove();
 
@@ -80,14 +81,14 @@ class KillsChart {
         (d) => this.formatDate(d.date) + this.getGameNumber(d.date, data)
       )
     );
-    const maxKills = d3.max(data, (d) => d.kills);
-    y.domain([0, maxKills + Math.max(3, maxKills * 0.2)]);
+    const maxValue = d3.max(data, (d) => d[metric]);
+    y.domain([0, maxValue + Math.max(3, maxValue * 0.2)]);
 
     // Add horizontal grid lines
     g.append('g')
       .attr('class', 'grid-lines')
       .selectAll('line')
-      .data(y.ticks(Math.min(maxKills + 1, 10)))
+      .data(y.ticks(Math.min(maxValue + 1, 10)))
       .enter()
       .append('line')
       .attr('x1', 0)
@@ -112,7 +113,7 @@ class KillsChart {
 
     g.append('g')
       .attr('class', 'y-axis')
-      .call(d3.axisLeft(y).ticks(Math.min(maxKills + 1, 10)));
+      .call(d3.axisLeft(y).ticks(Math.min(maxValue + 1, 10)));
 
     // Update bar positions
     const bars = g
@@ -125,27 +126,27 @@ class KillsChart {
         x(this.formatDate(d.date) + this.getGameNumber(d.date, data))
       )
       .attr('width', x.bandwidth())
-      .attr('y', (d) => y(Math.max(0.1, d.kills)))
-      .attr('height', (d) => this.height - y(Math.max(0.1, d.kills)))
+      .attr('y', (d) => y(d[metric]))
+      .attr('height', (d) => this.height - y(d[metric]))
       .style('fill', (d) => (d.result ? '#4CAF50' : '#FF5252'));
 
     // Update kill label above bar datapoints
-    g.selectAll('.kill-label')
+    g.selectAll('.metric-label')
       .data(data)
       .enter()
       .append('text')
-      .attr('class', 'kill-label')
+      .attr('class', 'metric-label')
       .attr(
         'x',
         (d) =>
           x(this.formatDate(d.date) + this.getGameNumber(d.date, data)) +
           x.bandwidth() / 2
       )
-      .attr('y', (d) => y(Math.max(0.1, d.kills)) - 5)
+      .attr('y', (d) => y(d[metric]) - 5)
       .attr('text-anchor', 'middle')
       .style('font-size', '12px')
       .style('fill', '#fff')
-      .text((d) => d.kills);
+      .text((d) => d[metric]);
 
     // Update tooltip
     const tooltip = this.tooltip;
@@ -170,10 +171,10 @@ class KillsChart {
               data
             )}<br/>
              Champion: ${d.champion}<br/>
-             Opponent: ${d.opponent}<br/>
              Kills: ${d.kills}<br/>
              Deaths: ${d.deaths}<br/>
              Assists: ${d.assists}<br/>
+             Team: ${d.teamname}<br/>
              Result: ${d.result ? 'Win' : 'Loss'}`
           )
           .style('left', `${tooltipX}px`)
@@ -201,7 +202,7 @@ class KillsChart {
       .on('mouseover', function (event, d) {
         const barX = parseFloat(d3.select(this).attr('x'));
         const tooltipX = containerRect.left + barX + x.bandwidth() / 2;
-        const tooltipY = containerRect.top + y(Math.max(0.1, d.kills));
+        const tooltipY = containerRect.top + y(d[metric]);
 
         tooltip.transition().duration(200).style('opacity', 0.9);
 
@@ -216,6 +217,7 @@ class KillsChart {
              Kills: ${d.kills}<br/>
              Deaths: ${d.deaths}<br/>
              Assists: ${d.assists}<br/>
+             Team: ${d.teamname}<br/>
              Result: ${d.result ? 'Win' : 'Loss'}`
           )
           .style('left', `${tooltipX}px`)
@@ -233,6 +235,10 @@ class KillsChart {
       .attr('text-anchor', 'middle')
       .style('fill', '#fff')
       .style('font-size', '16px')
-      .text(`${playerName}'s Kills by Date`);
+      .text(
+        `${playerName}'s ${
+          metric.charAt(0).toUpperCase() + metric.slice(1)
+        } by Match`
+      );
   }
 }

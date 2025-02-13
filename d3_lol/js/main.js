@@ -2,11 +2,13 @@ class ChartManager {
   constructor() {
     this.chart = null;
     this.currentPlayer = null;
+    this.currentMetric = 'kills';
     this.filters = {
-      minKills: {
-        id: 'min-kills',
+      minValue: {
+        id: 'min-metric',
         getValue: (el) => parseInt(el.value) || 0,
-        apply: (data, value) => data.filter((d) => d.kills >= value),
+        apply: (data, value) =>
+          data.filter((d) => d[this.currentMetric] >= value),
       },
       // Adding filters example, modularity:
       // maxDeaths: {
@@ -17,16 +19,18 @@ class ChartManager {
     };
     this.stats = {
       average: {
-        id: 'average-kills',
+        id: 'average-metric',
         calculate: (data) =>
-          data.reduce((sum, d) => sum + d.kills, 0) / data.length,
+          data.reduce((sum, d) => sum + d[this.currentMetric], 0) / data.length,
         format: (value) => value.toFixed(1),
       },
       median: {
-        id: 'median-kills',
+        id: 'median-metric',
         calculate: (data) => {
-          const sorted = [...data].sort((a, b) => a.kills - b.kills);
-          return sorted[Math.floor(sorted.length / 2)].kills;
+          const sorted = [...data].sort(
+            (a, b) => a[this.currentMetric] - b[this.currentMetric]
+          );
+          return sorted[Math.floor(sorted.length / 2)][this.currentMetric];
         },
         format: (value) => `${value}`,
       },
@@ -35,7 +39,7 @@ class ChartManager {
 
   async initialize() {
     try {
-      this.chart = new KillsChart('#chart-container');
+      this.chart = new MetricsChart('#chart-container');
       const players = await DataLoader.loadPlayerList();
       console.log('Loaded players:', players);
 
@@ -74,6 +78,15 @@ class ChartManager {
         element.addEventListener('input', () => this.updateChart());
       }
     });
+
+    document
+      .getElementById('metric-dropdown')
+      .addEventListener('change', (e) => {
+        this.currentMetric = e.target.value;
+        document.getElementById('metric-display').textContent =
+          e.target.options[e.target.selectedIndex].text;
+        this.updateChart();
+      });
   }
 
   async updateChart() {
@@ -93,7 +106,7 @@ class ChartManager {
       data = this.applyFilters(data);
       this.updateStats(data);
       data.sort((a, b) => a.date - b.date); // Sort by date
-      this.chart.update(data, playerName);
+      this.chart.update(data, playerName, this.currentMetric);
     } catch (error) {
       console.error('Error in updateChart:', error);
     }
