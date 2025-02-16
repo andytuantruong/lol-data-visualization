@@ -63,19 +63,24 @@ class MetricsChart {
     this.currentPlayerName = playerName;
     this.currentMetric = metric;
 
-    this.svg.selectAll('*').remove();
+    let g = this.svg.select('g');
+    const isFirstRender = g.empty();
 
-    const g = this.svg
-      .append('g')
-      .attr('transform', `translate(${this.margin.left},${this.margin.top})`);
+    if (isFirstRender) {
+      // Create new svg group for chart
+      this.svg.selectAll('*').remove();
+      this.svg
+        .append('g')
+        .attr('transform', `translate(${this.margin.left},${this.margin.top})`);
+      g = this.svg.select('g');
+    }
 
     const x = d3.scaleBand().range([0, this.width]).padding(0.1);
     const y = d3.scaleLinear().range([this.height, 0]);
 
-    // Sort data by date and time
+    // Sort chart data by date and time
     data.sort((a, b) => a.date.getTime() - b.date.getTime());
 
-    // Set domains
     x.domain(
       data.map(
         (d) => this.formatDate(d.date) + this.getGameNumber(d.date, data)
@@ -84,44 +89,70 @@ class MetricsChart {
     const maxValue = d3.max(data, (d) => d[metric]);
     y.domain([0, maxValue + Math.max(3, maxValue * 0.2)]);
 
-    // Add horizontal grid lines
-    g.append('g')
-      .attr('class', 'grid-lines')
-      .selectAll('line')
-      .data(y.ticks(Math.min(maxValue + 1, 10)))
+    // Add or update grid lines
+    const gridLines = g.selectAll('.grid-lines').data([null]);
+    gridLines
       .enter()
-      .append('line')
-      .attr('x1', 0)
-      .attr('x2', this.width)
-      .attr('y1', (d) => y(d))
-      .attr('y2', (d) => y(d))
-      .style('stroke', 'rgba(255, 255, 255, 0.3)')
-      .style('stroke-dasharray', '3,3');
+      .append('g')
+      .attr('class', 'grid-lines')
+      .merge(gridLines)
+      .transition()
+      .duration(750)
+      .call(d3.axisLeft(y).tickSize(-this.width).tickFormat(''));
 
-    const xAxis = g
+    // Add or update axes
+    const xAxis = g.selectAll('.x-axis').data([null]);
+    xAxis
+      .enter()
       .append('g')
       .attr('class', 'x-axis')
-      .attr('transform', `translate(0,${this.height})`);
-
-    xAxis.call(d3.axisBottom(x));
-
-    xAxis
+      .attr('transform', `translate(0,${this.height})`)
+      .merge(xAxis)
+      .transition()
+      .duration(750)
+      .call(d3.axisBottom(x))
       .selectAll('text')
-      .style('text-anchor', 'middle')
-      .style('font-size', window.innerWidth < 768 ? '10px' : '12px')
-      .style('fill', '#fff');
+      .style('text-anchor', 'middle');
 
-    g.append('g')
+    const yAxis = g.selectAll('.y-axis').data([null]);
+    yAxis
+      .enter()
+      .append('g')
       .attr('class', 'y-axis')
-      .call(d3.axisLeft(y).ticks(Math.min(maxValue + 1, 10)));
+      .merge(yAxis)
+      .transition()
+      .duration(750)
+      .call(d3.axisLeft(y));
 
-    // Update bar positions
-    const bars = g
-      .selectAll('.bar')
-      .data(data)
+    // Animated bars
+    const bars = g.selectAll('.bar').data(data, (d) => d.date);
+
+    bars
+      .exit()
+      .transition()
+      .duration(500)
+      .attr('y', this.height)
+      .attr('height', 0)
+      .remove();
+
+    // Bottom -> top bars
+    const newBars = bars
       .enter()
       .append('rect')
       .attr('class', 'bar')
+      .attr('x', (d) =>
+        x(this.formatDate(d.date) + this.getGameNumber(d.date, data))
+      )
+      .attr('width', x.bandwidth())
+      .attr('y', this.height) // Bottom
+      .attr('height', 0)
+      .style('fill', (d) => (d.result ? '#4CAF50' : '#FF5252'));
+
+    // Update all bars with animation
+    bars
+      .merge(newBars)
+      .transition()
+      .duration(750)
       .attr('x', (d) =>
         x(this.formatDate(d.date) + this.getGameNumber(d.date, data))
       )
@@ -130,66 +161,66 @@ class MetricsChart {
       .attr('height', (d) => this.height - y(d[metric]))
       .style('fill', (d) => (d.result ? '#4CAF50' : '#FF5252'));
 
-    // Update kill label above bar datapoints
-    g.selectAll('.metric-label')
-      .data(data)
+    const labels = g.selectAll('.metric-label').data(data, (d) => d.date);
+    labels.exit().transition().duration(500).style('opacity', 0).remove();
+
+    const newLabels = labels
       .enter()
       .append('text')
       .attr('class', 'metric-label')
+      .attr('text-anchor', 'middle')
+      .style('opacity', 0)
       .attr(
         'x',
         (d) =>
           x(this.formatDate(d.date) + this.getGameNumber(d.date, data)) +
           x.bandwidth() / 2
       )
-      .attr('y', (d) => y(d[metric]) - 5)
-      .attr('text-anchor', 'middle')
-      .style('font-size', '12px')
-      .style('fill', '#fff')
+      .attr('y', this.height);
+
+    // Update all labels with animation
+    labels
+      .merge(newLabels)
+      .transition()
+      .duration(750)
+      .attr(
+        'x',
+        (d) =>
+          x(this.formatDate(d.date) + this.getGameNumber(d.date, data)) +
+          x.bandwidth() / 2
+      )
+      .attr('y', (d) => y(d[metric]) - 5) // Label above the bar datapoints
+      .style('opacity', 1)
       .text((d) => d[metric]);
 
-    // Update tooltip
-    const tooltip = this.tooltip;
+    const title = g.selectAll('.chart-title').data([null]);
+
+    title
+      .enter()
+      .append('text')
+      .attr('class', 'chart-title')
+      .attr('x', this.width / 2)
+      .attr('y', -10)
+      .attr('text-anchor', 'middle')
+      .style('fill', '#fff')
+      .style('font-size', '16px')
+      .merge(title)
+      .transition()
+      .duration(750)
+      .text(
+        `${playerName}'s ${
+          metric.charAt(0).toUpperCase() + metric.slice(1)
+        } by Match`
+      );
+
+    // Tooltip positioning
     const containerRect = this.container.node().getBoundingClientRect();
-    const self = this;
+    const self = this; // Store reference to 'this' for use in event handlers
 
-    bars
-      .on('mouseover', function (event, d) {
-        const bar = d3.select(this);
-        const barX = parseFloat(bar.attr('x'));
-        const barY = parseFloat(bar.attr('y'));
-
-        const tooltipX = containerRect.left + barX + x.bandwidth() / 2;
-        const tooltipY = containerRect.top + barY;
-
-        tooltip.transition().duration(200).style('opacity', 0.9);
-
-        tooltip
-          .html(
-            `Date: ${self.formatDate(d.date)}${self.getGameNumber(
-              d.date,
-              data
-            )}<br/>
-             Champion: ${d.champion}<br/>
-             Kills: ${d.kills}<br/>
-             Deaths: ${d.deaths}<br/>
-             Assists: ${d.assists}<br/>
-             Team: ${d.teamname}<br/>
-             Result: ${d.result ? 'Win' : 'Loss'}`
-          )
-          .style('left', `${tooltipX}px`)
-          .style('top', `${tooltipY - 10}px`)
-          .style('transform', 'translate(-50%, -100%)');
-      })
-      .on('mouseout', () => {
-        tooltip.transition().duration(500).style('opacity', 0);
-      });
-
-    // Update overlay rectangles
+    // Update tooltip behavior
     g.selectAll('.bar-overlay')
       .data(data)
-      .enter()
-      .append('rect')
+      .join('rect')
       .attr('class', 'bar-overlay')
       .attr('x', (d) =>
         x(this.formatDate(d.date) + this.getGameNumber(d.date, data))
@@ -200,13 +231,18 @@ class MetricsChart {
       .style('fill', 'transparent')
       .style('pointer-events', 'all')
       .on('mouseover', function (event, d) {
-        const barX = parseFloat(d3.select(this).attr('x'));
-        const tooltipX = containerRect.left + barX + x.bandwidth() / 2;
-        const tooltipY = containerRect.top + y(d[metric]);
+        const tooltipX = event.pageX;
+        const tooltipY = event.pageY;
 
-        tooltip.transition().duration(200).style('opacity', 0.9);
+        // Highlight the bar datapoints on hover
+        d3.select(this)
+          .transition()
+          .duration(200)
+          .style('fill', 'rgba(255, 255, 255, 0.1)');
 
-        tooltip
+        self.tooltip.transition().duration(200).style('opacity', 0.9);
+
+        self.tooltip
           .html(
             `Date: ${self.formatDate(d.date)}${self.getGameNumber(
               d.date,
@@ -221,24 +257,17 @@ class MetricsChart {
              Result: ${d.result ? 'Win' : 'Loss'}`
           )
           .style('left', `${tooltipX}px`)
-          .style('top', `${tooltipY - 10}px`)
+          .style('top', `${tooltipY}px`)
           .style('transform', 'translate(-50%, -100%)');
       })
-      .on('mouseout', () => {
-        tooltip.transition().duration(500).style('opacity', 0);
+      .on('mousemove', function (event) {
+        self.tooltip
+          .style('left', `${event.pageX}px`)
+          .style('top', `${event.pageY}px`);
+      })
+      .on('mouseout', function () {
+        d3.select(this).transition().duration(200).style('fill', 'transparent');
+        self.tooltip.transition().duration(500).style('opacity', 0);
       });
-
-    // Update title
-    g.append('text')
-      .attr('x', this.width / 2)
-      .attr('y', -10)
-      .attr('text-anchor', 'middle')
-      .style('fill', '#fff')
-      .style('font-size', '16px')
-      .text(
-        `${playerName}'s ${
-          metric.charAt(0).toUpperCase() + metric.slice(1)
-        } by Match`
-      );
   }
 }
