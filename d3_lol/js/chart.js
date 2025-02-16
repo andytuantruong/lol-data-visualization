@@ -214,12 +214,9 @@ class MetricsChart {
       );
 
     // Tooltip positioning
-    const containerRect = this.container.node().getBoundingClientRect();
-    const self = this; // Store reference to 'this' for use in event handlers
-
-    // Update tooltip behavior
+    const self = this;
     g.selectAll('.bar-overlay')
-      .data(data)
+      .data(data, (d) => d.date)
       .join('rect')
       .attr('class', 'bar-overlay')
       .attr('x', (d) =>
