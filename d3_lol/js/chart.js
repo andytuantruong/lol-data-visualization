@@ -1,12 +1,7 @@
 class MetricsChart {
   constructor(containerId) {
     this.container = d3.select(containerId);
-    this.margin = {
-      top: 40,
-      right: 20,
-      bottom: 100,
-      left: 40,
-    };
+    this.setMargins();
     this.width = 0;
     this.height = 0;
     this.svg = null;
@@ -14,33 +9,70 @@ class MetricsChart {
     this.initialize();
   }
 
+  setMargins() {
+    const isMobile = window.innerWidth < 768;
+    const isTablet = window.innerWidth >= 768 && window.innerWidth < 1024;
+
+    this.margin = {
+      top: 40,
+      right: isMobile ? 10 : 20,
+      bottom: isMobile ? 80 : 100,
+      left: isMobile ? 30 : isTablet ? 35 : 40,
+    };
+  }
+
   initialize() {
-    this.svg = this.container.append('svg');
+    this.svg = this.container
+      .append('svg')
+      .attr('preserveAspectRatio', 'xMidYMid meet');
+
     this.tooltip = this.container
       .append('div')
       .attr('class', 'tooltip')
       .style('opacity', 0);
 
-    this.resize();
+    // Add resize event listener with debouncing
+    let resizeTimer;
     window.addEventListener('resize', () => {
-      this.resize();
-      if (this.currentData && this.currentPlayerName) {
-        this.update(this.currentData, this.currentPlayerName);
-      }
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        this.setMargins();
+        this.resize();
+        if (this.currentData && this.currentPlayerName) {
+          this.update(
+            this.currentData,
+            this.currentPlayerName,
+            this.currentMetric
+          );
+        }
+      }, 250);
     });
+
+    this.resize();
   }
 
   resize() {
     const containerRect = this.container.node().getBoundingClientRect();
     this.width = containerRect.width - this.margin.left - this.margin.right;
+
+    const isMobile = window.innerWidth < 768;
+    const isTablet = window.innerWidth >= 768 && window.innerWidth < 1024;
+    const baseHeight = isMobile ? 300 : isTablet ? 400 : 500;
+
     this.height = Math.min(
       containerRect.height - this.margin.top - this.margin.bottom,
-      window.innerWidth < 768 ? 300 : 500
+      baseHeight
     );
 
     this.svg
-      .attr('width', this.width + this.margin.left + this.margin.right)
-      .attr('height', this.height + this.margin.top + this.margin.bottom);
+      .attr(
+        'viewBox',
+        `0 0 ${this.width + this.margin.left + this.margin.right} ${
+          this.height + this.margin.top + this.margin.bottom
+        }`
+      )
+      .attr('width', '100%')
+      .attr('height', '100%');
   }
 
   formatDate(date) {
@@ -89,40 +121,54 @@ class MetricsChart {
     const maxValue = d3.max(data, (d) => d[metric]);
     y.domain([0, maxValue + Math.max(3, maxValue * 0.2)]);
 
-    // Add or update grid lines
-    const gridLines = g.selectAll('.grid-lines').data([null]);
-    gridLines
+    // Adjust font sizes based on screen width
+    const fontSize = window.innerWidth < 768 ? 10 : 12;
+
+    // X-axis update
+    const xAxis = g.selectAll('.x-axis').data([null]);
+    const xAxisEnter = xAxis
       .enter()
       .append('g')
-      .attr('class', 'grid-lines')
-      .merge(gridLines)
+      .attr('class', 'x-axis')
+      .attr('transform', `translate(0,${this.height})`);
+
+    xAxis
+      .merge(xAxisEnter)
+      .transition()
+      .duration(750)
+      .attr('transform', `translate(0,${this.height})`)
+      .call(d3.axisBottom(x));
+
+    g.selectAll('.x-axis text')
+      .style('text-anchor', 'middle')
+      .style('font-size', `${fontSize}px`);
+
+    // Y-axis update
+    const yAxis = g.selectAll('.y-axis').data([null]);
+    const yAxisEnter = yAxis.enter().append('g').attr('class', 'y-axis');
+
+    yAxis.merge(yAxisEnter).transition().duration(750).call(d3.axisLeft(y));
+
+    g.selectAll('.y-axis text').style('font-size', `${fontSize}px`);
+
+    // Update grid lines
+    const gridLines = g.selectAll('.grid-lines').data([null]);
+    const gridLinesEnter = gridLines
+      .enter()
+      .append('g')
+      .attr('class', 'grid-lines');
+
+    gridLines
+      .merge(gridLinesEnter)
       .transition()
       .duration(750)
       .call(d3.axisLeft(y).tickSize(-this.width).tickFormat(''));
 
-    // Add or update axes
-    const xAxis = g.selectAll('.x-axis').data([null]);
-    xAxis
-      .enter()
-      .append('g')
-      .attr('class', 'x-axis')
-      .attr('transform', `translate(0,${this.height})`)
-      .merge(xAxis)
-      .transition()
-      .duration(750)
-      .call(d3.axisBottom(x))
-      .selectAll('text')
-      .style('text-anchor', 'middle');
+    g.selectAll('.grid-lines line')
+      .style('stroke', 'rgba(255, 255, 255, 0.1)')
+      .style('stroke-dasharray', '2,2');
 
-    const yAxis = g.selectAll('.y-axis').data([null]);
-    yAxis
-      .enter()
-      .append('g')
-      .attr('class', 'y-axis')
-      .merge(yAxis)
-      .transition()
-      .duration(750)
-      .call(d3.axisLeft(y));
+    g.selectAll('.grid-lines path').style('display', 'none');
 
     // Animated bars
     const bars = g.selectAll('.bar').data(data, (d) => d.date);
@@ -178,7 +224,7 @@ class MetricsChart {
       )
       .attr('y', this.height);
 
-    // Update all labels with animation
+    // Update metric labels with responsive font size
     labels
       .merge(newLabels)
       .transition()
@@ -189,22 +235,25 @@ class MetricsChart {
           x(this.formatDate(d.date) + this.getGameNumber(d.date, data)) +
           x.bandwidth() / 2
       )
-      .attr('y', (d) => y(d[metric]) - 5) // Label above the bar datapoints
+      .attr('y', (d) => y(d[metric]) - 5)
       .style('opacity', 1)
+      .style('font-size', `${fontSize}px`)
       .text((d) => d[metric]);
 
+    // Update title with responsive positioning
     const title = g.selectAll('.chart-title').data([null]);
 
     title
       .enter()
       .append('text')
       .attr('class', 'chart-title')
-      .attr('x', this.width / 2)
-      .attr('y', -10)
-      .attr('text-anchor', 'middle')
-      .style('fill', '#fff')
-      .style('font-size', '16px')
       .merge(title)
+      .attr('x', this.width / 2)
+      .attr('y', -this.margin.top / 2) // Position halfway up in the margin space
+      .attr('text-anchor', 'middle')
+      .attr('dominant-baseline', 'middle') // Vertically center the text
+      .style('fill', '#fff')
+      .style('font-size', window.innerWidth < 768 ? '14px' : '16px')
       .transition()
       .duration(750)
       .text(
