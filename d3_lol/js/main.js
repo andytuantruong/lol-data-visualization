@@ -50,14 +50,28 @@ class ChartManager {
     try {
       this.chart = new MetricsChart('#chart-container');
 
-      // Use previously selected metric on refresh
+      // Restore previously selected metric and set initial slider position
       const savedMetric = localStorage.getItem('selectedMetric');
       if (savedMetric) {
-        const metricDropdown = document.getElementById('metric-dropdown');
-        metricDropdown.value = savedMetric;
-        this.currentMetric = savedMetric;
-        document.getElementById('metric-display').textContent =
-          metricDropdown.options[metricDropdown.selectedIndex].text;
+        const segments = document.querySelectorAll('.segment');
+        const slider = document.querySelector('.slider');
+        segments.forEach((segment, index) => {
+          if (segment.dataset.value === savedMetric) {
+            segments.forEach((s) => s.classList.remove('active'));
+            segment.classList.add('active');
+            // Set initial slider position without animation
+            slider.style.transition = 'none';
+            slider.style.transform = `translateX(${index * 100}%)`;
+
+            // Re-enable transitions after initial position is set
+            setTimeout(() => {
+              slider.style.transition = 'transform 0.3s ease';
+            }, 0);
+            this.currentMetric = savedMetric;
+            document.getElementById('metric-display').textContent =
+              segment.textContent;
+          }
+        });
       }
 
       this.hierarchicalData = await DataLoader.loadHierarchicalData();
@@ -152,15 +166,25 @@ class ChartManager {
       }
     });
 
-    document
-      .getElementById('metric-dropdown')
-      .addEventListener('change', (e) => {
-        this.currentMetric = e.target.value;
+    // Replace metric dropdown listener with segmented control
+    const segmentedControl = document.querySelector('.segmented-control');
+    const slider = segmentedControl.querySelector('.slider');
+    const segments = segmentedControl.querySelectorAll('.segment');
+
+    segments.forEach((segment, index) => {
+      segment.addEventListener('click', () => {
+        segments.forEach((s) => s.classList.remove('active'));
+        segment.classList.add('active');
+        // Move slider
+        slider.style.transform = `translateX(${index * 100}%)`;
+        // Update metric
+        this.currentMetric = segment.dataset.value;
         document.getElementById('metric-display').textContent =
-          e.target.options[e.target.selectedIndex].text;
-        localStorage.setItem('selectedMetric', this.currentMetric); // Save metric on refresh
+          segment.textContent;
+        localStorage.setItem('selectedMetric', this.currentMetric);
         this.updateChart();
       });
+    });
   }
 
   async updateChart() {
