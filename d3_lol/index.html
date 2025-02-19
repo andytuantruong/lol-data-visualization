@@ -42,9 +42,26 @@
           </div>
         </div>
         <div class="controls">
-          <select id="player-dropdown">
-            <option value="">Select a player...</option>
-          </select>
+          <div class="filter-group">
+            <div class="filter-item">
+              <label for="league-dropdown">League</label>
+              <select id="league-dropdown" class="filter-select">
+                <option value="">Select League...</option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <label for="team-dropdown">Team</label>
+              <select id="team-dropdown" class="filter-select" disabled>
+                <option value="">Select Team...</option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <label for="player-dropdown">Player</label>
+              <select id="player-dropdown" class="filter-select" disabled>
+                <option value="">Select Player...</option>
+              </select>
+            </div>
+          </div>
           <select id="metric-dropdown">
             <option value="kills">Kills</option>
             <option value="deaths">Deaths</option>
