@@ -119,7 +119,7 @@ class MetricsChart {
       )
     );
     const maxValue = d3.max(data, (d) => d[metric]);
-    y.domain([0, maxValue + Math.max(3, maxValue * 0.2)]);
+    y.domain([0, Math.ceil(maxValue + 1)]);
 
     // Adjust font sizes based on screen width
     const fontSize = window.innerWidth < 768 ? 10 : 12;
@@ -147,7 +147,16 @@ class MetricsChart {
     const yAxis = g.selectAll('.y-axis').data([null]);
     const yAxisEnter = yAxis.enter().append('g').attr('class', 'y-axis');
 
-    yAxis.merge(yAxisEnter).transition().duration(750).call(d3.axisLeft(y));
+    yAxis
+      .merge(yAxisEnter)
+      .transition()
+      .duration(750)
+      .call(
+        d3
+          .axisLeft(y)
+          .ticks(Math.ceil(maxValue + 1))
+          .tickFormat(d3.format('d'))
+      );
 
     g.selectAll('.y-axis text').style('font-size', `${fontSize}px`);
 
@@ -162,7 +171,13 @@ class MetricsChart {
       .merge(gridLinesEnter)
       .transition()
       .duration(750)
-      .call(d3.axisLeft(y).tickSize(-this.width).tickFormat(''));
+      .call(
+        d3
+          .axisLeft(y)
+          .ticks(Math.ceil(maxValue + 1))
+          .tickSize(-this.width)
+          .tickFormat('')
+      );
 
     g.selectAll('.grid-lines line')
       .style('stroke', 'rgba(255, 255, 255, 0.1)')
