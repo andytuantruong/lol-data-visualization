@@ -2,7 +2,15 @@ class ChartManager {
   constructor() {
     this.chart = null;
     this.currentPlayer = null;
-    this.currentMetric = 'kills';
+    const metricDropdown = document.getElementById('metric-dropdown');
+    this.currentMetric = metricDropdown ? metricDropdown.value : 'kills';
+
+    const metricDisplay = document.getElementById('metric-display');
+    if (metricDropdown && metricDisplay) {
+      metricDisplay.textContent =
+        metricDropdown.options[metricDropdown.selectedIndex].text;
+    }
+
     this.filters = {
       minValue: {
         id: 'min-metric',
@@ -41,6 +49,16 @@ class ChartManager {
   async initialize() {
     try {
       this.chart = new MetricsChart('#chart-container');
+
+      // Use previously selected metric on refresh
+      const savedMetric = localStorage.getItem('selectedMetric');
+      if (savedMetric) {
+        const metricDropdown = document.getElementById('metric-dropdown');
+        metricDropdown.value = savedMetric;
+        this.currentMetric = savedMetric;
+        document.getElementById('metric-display').textContent =
+          metricDropdown.options[metricDropdown.selectedIndex].text;
+      }
 
       this.hierarchicalData = await DataLoader.loadHierarchicalData();
       this.populateLeagueDropdown();
@@ -140,6 +158,7 @@ class ChartManager {
         this.currentMetric = e.target.value;
         document.getElementById('metric-display').textContent =
           e.target.options[e.target.selectedIndex].text;
+        localStorage.setItem('selectedMetric', this.currentMetric); // Save metric on refresh
         this.updateChart();
       });
   }
