@@ -50,6 +50,9 @@ class ChartManager {
     try {
       this.chart = new MetricsChart('#chart-container');
 
+      document.getElementById('team-dropdown').disabled = true;
+      document.getElementById('player-dropdown').disabled = true;
+
       // Restore previously selected metric and set initial slider position
       const savedMetric = localStorage.getItem('selectedMetric');
       if (savedMetric) {
