@@ -81,6 +81,7 @@ class ChartManager {
       this.populateLeagueDropdown();
       this.setupHierarchicalFilters();
       this.setupEventListeners();
+      this.resetChart();
     } catch (error) {
       console.error('Error in initialize:', error);
     }
@@ -142,11 +143,13 @@ class ChartManager {
       .getElementById('league-dropdown')
       .addEventListener('change', (e) => {
         this.updateTeamDropdown(e.target.value);
+        this.resetChart();
       });
 
     document.getElementById('team-dropdown').addEventListener('change', (e) => {
       const league = document.getElementById('league-dropdown').value;
       this.updatePlayerDropdown(league, e.target.value);
+      this.resetChart();
     });
 
     document
@@ -185,7 +188,15 @@ class ChartManager {
         document.getElementById('metric-display').textContent =
           segment.textContent;
         localStorage.setItem('selectedMetric', this.currentMetric);
-        this.updateChart();
+
+        // Check if a player is selected before updating the chart
+        const playerName = document.getElementById('player-dropdown').value;
+        if (playerName) {
+          this.updateChart();
+        } else {
+          // If no player is selected, just reset the chart
+          this.resetChart();
+        }
       });
     });
   }
@@ -193,7 +204,10 @@ class ChartManager {
   async updateChart() {
     try {
       const playerName = document.getElementById('player-dropdown').value;
-      if (!playerName) return;
+      if (!playerName) {
+        this.resetChart();
+        return;
+      }
 
       document.getElementById('player-name').textContent = playerName;
 
@@ -201,6 +215,7 @@ class ChartManager {
       let data = await DataLoader.loadPlayerData(playerName);
       if (!data || data.length === 0) {
         console.error('No data loaded for player:', playerName);
+        this.resetChart();
         return;
       }
 
@@ -210,6 +225,7 @@ class ChartManager {
       this.chart.update(data, playerName, this.currentMetric);
     } catch (error) {
       console.error('Error in updateChart:', error);
+      this.resetChart();
     }
   }
 
@@ -232,6 +248,15 @@ class ChartManager {
         element.textContent = stat.format(value);
       }
     });
+  }
+
+  resetChart() {
+    document.getElementById('player-name').textContent = 'Select Player';
+    document.getElementById('average-metric').textContent = '--';
+    document.getElementById('median-metric').textContent = '--';
+    if (this.chart) {
+      this.chart.clear();
+    }
   }
 }
 

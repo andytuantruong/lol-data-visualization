@@ -331,4 +331,17 @@ class MetricsChart {
         self.tooltip.transition().duration(500).style('opacity', 0);
       });
   }
+
+  clear() {
+    this.currentData = null;
+    this.currentPlayerName = null;
+    this.currentMetric = null;
+
+    let g = this.svg.select('g');
+
+    if (!g.empty()) {
+      // Remove all elements immediately w/out animation
+      g.selectAll('*').remove();
+    }
+  }
 }
