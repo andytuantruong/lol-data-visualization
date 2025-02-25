@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
-    <title>LoL Esports Analytics</title>
+    <title>LoL Esports Player Chart</title>
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css"
@@ -20,6 +20,11 @@
     />
   </head>
   <body>
+    <div id="loading-overlay" class="loading-overlay">
+      <div class="loading-spinner"></div>
+      <div class="loading-message">Loading LoL Esports data...</div>
+    </div>
+
     <div class="container">
       <div class="header">
         <div class="title-section">
@@ -40,6 +45,11 @@
               </div>
             </div>
           </div>
+        </div>
+
+        <div class="navigation-links">
+          <a href="index.html" class="nav-link active">Player Chart View</a>
+          <a href="performance.html" class="nav-link">Performance Table</a>
         </div>
         <div class="controls">
           <div class="filter-group">
@@ -82,5 +92,6 @@
     <script src="js/dataLoader.js"></script>
     <script src="js/chart.js"></script>
     <script src="js/main.js"></script>
+    <script src="js/loadingOverlay.js"></script>
   </body>
 </html>

@@ -316,3 +316,490 @@ svg {
     padding: 0;
   }
 }
+
+/* Performance Table Styles */
+.performance-table-container {
+  width: 100%;
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  padding: 20px;
+  box-sizing: border-box;
+  overflow: auto;
+  margin-top: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.table-controls {
+  margin-bottom: 20px;
+}
+
+.metric-filter-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.metric-filter-container label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.metric-filter {
+  width: 300px;
+  height: 34px;
+}
+
+.metric-filter .slider {
+  width: 25%; /* 4 segments (All, Kills, Deaths, Assists) */
+  transition: transform 0.3s ease;
+}
+
+.metric-filter .segment {
+  flex: 1;
+  padding: 0 8px;
+  z-index: 2; /* Ensure segments are above the slider */
+}
+
+.performance-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  color: #fff;
+  font-size: 14px;
+  table-layout: fixed;
+}
+
+.performance-table thead {
+  background-color: #242424;
+}
+
+.performance-table th {
+  padding: 12px 8px;
+  text-align: center;
+  font-weight: 600;
+  border-bottom: 2px solid #333;
+  position: sticky;
+  top: 0;
+  background-color: #242424;
+  z-index: 10;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Column widths */
+.performance-table th:nth-child(1) {
+  width: 15%;
+  text-align: left;
+} /* Player */
+.performance-table th:nth-child(2) {
+  width: 12%;
+  text-align: left;
+} /* Team */
+.performance-table th:nth-child(3) {
+  width: 10%;
+} /* Metric */
+.performance-table th:nth-child(4) {
+  width: 7%;
+} /* Avg */
+.performance-table th:nth-child(5),
+.performance-table th:nth-child(6),
+.performance-table th:nth-child(7),
+.performance-table th:nth-child(8),
+.performance-table th:nth-child(9),
+.performance-table th:nth-child(10) {
+  width: 8%;
+} /* Percentage columns */
+
+.performance-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #333;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Align text columns to the left */
+.performance-table td:nth-child(1),
+.performance-table td:nth-child(2) {
+  text-align: left;
+}
+
+.performance-table .data-row {
+  transition: background-color 0.2s;
+}
+
+.performance-table .data-row:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.performance-table .player-metric {
+  font-weight: 500;
+  text-align: center;
+}
+
+.player-link {
+  color: #4caf50;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.player-link:hover {
+  color: #81c784;
+  text-decoration: underline;
+}
+
+.metric-name {
+  color: #ccc;
+  font-weight: 500;
+}
+
+.performance-table .sortable {
+  cursor: pointer;
+  position: relative;
+}
+
+.performance-table .sortable:hover {
+  background-color: #2a2a2a;
+}
+
+.performance-table .sort-icon {
+  display: inline-block;
+  margin-left: 5px;
+  color: #4caf50;
+  font-size: 12px;
+}
+
+.performance-table .over-performance {
+  color: #4caf50;
+  font-weight: 600;
+}
+
+.performance-table .under-performance {
+  color: #ff5252;
+  font-weight: 600;
+}
+
+/* Updated styles for percentage columns */
+.performance-table .l3-percentage,
+.performance-table .l5-percentage,
+.performance-table .l10-percentage,
+.performance-table .h2h-percentage,
+.performance-table .current-year-percentage,
+.performance-table .all-time-percentage {
+  text-align: center;
+  font-weight: 600;
+  transition: background-color 0.2s;
+}
+
+/* Highlight cells with positive percentages */
+.performance-table td.over-performance {
+  background-color: rgba(76, 175, 80, 0.1);
+}
+
+/* Highlight cells with negative percentages */
+.performance-table td.under-performance {
+  background-color: rgba(255, 82, 82, 0.1);
+}
+
+/* Current Year and All-Time Percentage Columns */
+.performance-table .current-year-percentage,
+.performance-table .all-time-percentage {
+  text-align: center;
+  font-weight: 600;
+}
+
+.performance-table .current-year-percentage.over-performance {
+  color: #4caf50;
+  background-color: rgba(76, 175, 80, 0.1);
+}
+
+.performance-table .current-year-percentage.under-performance {
+  color: #ff5252;
+  background-color: rgba(255, 82, 82, 0.1);
+}
+
+.performance-table .all-time-percentage {
+  color: #ffb74d;
+  background-color: rgba(255, 183, 77, 0.05);
+}
+
+/* Highlight header for current year */
+.performance-table th:nth-last-child(2) {
+  color: #4caf50;
+  font-weight: 600;
+}
+
+/* Highlight header for all-time */
+.performance-table th:last-child {
+  color: #ffb74d;
+  font-weight: 600;
+}
+
+/* Responsive styles for the expanded table */
+@media (max-width: 1200px) {
+  .performance-table {
+    font-size: 13px;
+  }
+
+  .performance-table th,
+  .performance-table td {
+    padding: 10px 6px;
+  }
+}
+
+@media (max-width: 992px) {
+  .performance-table {
+    font-size: 12px;
+  }
+
+  .performance-table th,
+  .performance-table td {
+    padding: 8px 4px;
+  }
+}
+
+@media (max-width: 768px) {
+  .performance-table-container {
+    padding: 15px 10px;
+  }
+
+  .performance-table {
+    font-size: 11px;
+  }
+
+  .performance-table th,
+  .performance-table td {
+    padding: 6px 3px;
+  }
+
+  /* Hide less important columns on mobile */
+  .performance-table th:nth-child(6),
+  .performance-table td:nth-child(6),
+  .performance-table th:nth-child(7),
+  .performance-table td:nth-child(7) {
+    display: none;
+  }
+}
+
+@media (max-width: 576px) {
+  .performance-table th:nth-child(8),
+  .performance-table td:nth-child(8) {
+    display: none;
+  }
+}
+
+/* Enhanced hover effect for rows */
+.performance-table .data-row:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Tab content transitions */
+.tab-content {
+  transition: opacity 0.3s ease;
+  opacity: 0;
+  display: none;
+}
+
+.tab-content.active {
+  opacity: 1;
+  display: block;
+}
+
+/* Tab Navigation */
+.tab-navigation {
+  display: flex;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #333;
+}
+
+.tab {
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  color: #999;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.3s;
+}
+
+.tab.active {
+  color: #fff;
+}
+
+.tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: #4caf50;
+}
+
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .performance-table {
+    font-size: 12px;
+  }
+
+  .performance-table th,
+  .performance-table td {
+    padding: 8px 10px;
+  }
+
+  .tab {
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+}
+
+.navigation-links {
+  display: flex;
+  margin-bottom: 20px;
+  gap: 20px;
+}
+
+.nav-link {
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  color: #999;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.3s;
+  text-decoration: none;
+}
+
+.nav-link.active {
+  color: #fff;
+}
+
+.nav-link.active::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: #4caf50;
+}
+
+.nav-link:hover:not(.active) {
+  color: #ccc;
+}
+
+.subtitle {
+  color: #999;
+  font-size: 16px;
+  margin-top: 5px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 768px) {
+  .navigation-links {
+    gap: 10px;
+  }
+
+  .nav-link {
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+
+  .subtitle {
+    font-size: 14px;
+  }
+}
+
+/* Loading Overlay Styles */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.loading-spinner {
+  border: 5px solid #333;
+  border-top: 5px solid #4caf50;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-message {
+  color: white;
+  font-size: 18px;
+  text-align: center;
+  max-width: 80%;
+}
+
+/* Data Error Message Styles */
+.data-error {
+  background-color: rgba(255, 82, 82, 0.1);
+  border: 1px solid #ff5252;
+  border-radius: 4px;
+  padding: 15px;
+  margin: 20px 0;
+  display: none;
+}
+
+.data-error h3 {
+  color: #ff5252;
+  margin-top: 0;
+}
+
+.data-error p {
+  margin-bottom: 10px;
+}
+
+.data-error ul {
+  margin-bottom: 10px;
+}
+
+.data-error .file-format {
+  background-color: rgba(0, 0, 0, 0.1);
+  padding: 10px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 12px;
+  margin-top: 10px;
+  white-space: pre-wrap;
+}

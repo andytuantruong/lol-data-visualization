@@ -44,57 +44,216 @@ class ChartManager {
       },
     };
     this.hierarchicalData = null;
+    this.performanceTable = null;
   }
 
   async initialize() {
     try {
+      console.log('Initializing ChartManager...');
       this.chart = new MetricsChart('#chart-container');
 
-      document.getElementById('team-dropdown').disabled = true;
-      document.getElementById('player-dropdown').disabled = true;
+      const performanceTableContainer = document.querySelector(
+        '#performance-table-container'
+      );
+      if (performanceTableContainer) {
+        this.performanceTable = new PerformanceTable(
+          '#performance-table-container'
+        );
+      }
 
-      // Restore previously selected metric and set initial slider position
-      const savedMetric = localStorage.getItem('selectedMetric');
-      if (savedMetric) {
-        const segments = document.querySelectorAll('.segment');
-        const slider = document.querySelector('.slider');
+      const teamDropdown = document.getElementById('team-dropdown');
+      const playerDropdown = document.getElementById('player-dropdown');
+
+      if (teamDropdown) teamDropdown.disabled = true;
+      if (playerDropdown) playerDropdown.disabled = true;
+
+      const savedMetric = localStorage.getItem('selectedMetric') || 'kills';
+      const segments = document.querySelectorAll('.segment');
+      const slider = document.querySelector('.slider');
+
+      if (segments.length > 0 && slider) {
         segments.forEach((segment, index) => {
           if (segment.dataset.value === savedMetric) {
             segments.forEach((s) => s.classList.remove('active'));
             segment.classList.add('active');
-            // Set initial slider position without animation
+
             slider.style.transition = 'none';
             slider.style.transform = `translateX(${index * 100}%)`;
 
-            // Re-enable transitions after initial position is set
             setTimeout(() => {
               slider.style.transition = 'transform 0.3s ease';
             }, 0);
+
             this.currentMetric = savedMetric;
-            document.getElementById('metric-display').textContent =
-              segment.textContent;
+            const metricDisplay = document.getElementById('metric-display');
+            if (metricDisplay) {
+              metricDisplay.textContent = segment.textContent;
+            }
           }
         });
       }
 
-      this.hierarchicalData = await DataLoader.loadHierarchicalData();
-      this.populateLeagueDropdown();
-      this.setupHierarchicalFilters();
-      this.setupEventListeners();
-      this.resetChart();
+      console.log('Loading hierarchical data...');
+      try {
+        this.hierarchicalData = await DataLoader.loadHierarchicalData();
+        console.log('Hierarchical data loaded:', this.hierarchicalData);
+
+        this.populateLeagueDropdown();
+        this.setupHierarchicalFilters();
+        this.setupEventListeners();
+
+        const savedLeague = localStorage.getItem('selectedLeague');
+        const savedTeam = localStorage.getItem('selectedTeam');
+        const savedPlayer = localStorage.getItem('selectedPlayer');
+
+        console.log('Saved selections:', {
+          savedLeague,
+          savedTeam,
+          savedPlayer,
+        });
+
+        if (savedLeague && savedTeam && savedPlayer) {
+          const leagueDropdown = document.getElementById('league-dropdown');
+          if (leagueDropdown) {
+            console.log('Setting league dropdown to:', savedLeague);
+
+            let leagueExists = false;
+            for (let i = 0; i < leagueDropdown.options.length; i++) {
+              if (leagueDropdown.options[i].value === savedLeague) {
+                leagueExists = true;
+                break;
+              }
+            }
+
+            if (leagueExists) {
+              leagueDropdown.value = savedLeague;
+              leagueDropdown.dispatchEvent(new Event('change'));
+
+              setTimeout(() => {
+                if (teamDropdown) {
+                  console.log('Setting team dropdown to:', savedTeam);
+
+                  let teamExists = false;
+                  for (let i = 0; i < teamDropdown.options.length; i++) {
+                    if (teamDropdown.options[i].value === savedTeam) {
+                      teamExists = true;
+                      break;
+                    }
+                  }
+
+                  if (teamExists) {
+                    teamDropdown.value = savedTeam;
+                    teamDropdown.dispatchEvent(new Event('change'));
+                    setTimeout(() => {
+                      if (playerDropdown) {
+                        console.log('Setting player dropdown to:', savedPlayer);
+
+                        let playerExists = false;
+                        for (
+                          let i = 0;
+                          i < playerDropdown.options.length;
+                          i++
+                        ) {
+                          if (playerDropdown.options[i].value === savedPlayer) {
+                            playerExists = true;
+                            break;
+                          }
+                        }
+
+                        if (playerExists) {
+                          playerDropdown.value = savedPlayer;
+                          playerDropdown.dispatchEvent(new Event('change'));
+                        } else {
+                          console.warn(
+                            'Saved player not found in dropdown:',
+                            savedPlayer
+                          );
+                        }
+                      }
+                    }, 300);
+                  } else {
+                    console.warn(
+                      'Saved team not found in dropdown:',
+                      savedTeam
+                    );
+                  }
+                }
+              }, 300);
+            } else {
+              console.warn('Saved league not found in dropdown:', savedLeague);
+            }
+          }
+        } else {
+          this.resetChart();
+        }
+      } catch (dataError) {
+        console.error('Error loading data:', dataError);
+        document.getElementById('data-error').style.display = 'block';
+        document
+          .getElementById('data-error')
+          .querySelector(
+            'p'
+          ).textContent = `Error loading data: ${dataError.message}. Please check that your CSV file exists and is properly formatted.`;
+      }
+
+      if (this.performanceTable) {
+        try {
+          await this.performanceTable.initialize();
+        } catch (error) {
+          console.error('Error initializing performance table:', error);
+        }
+      }
+
+      const tabs = document.querySelectorAll('.tab');
+      if (tabs.length > 0) {
+        this.setupTabNavigation();
+      }
+
+      // Hide loading overlay when initialization completes
+      const loadingOverlay = document.getElementById('loading-overlay');
+      if (loadingOverlay) {
+        loadingOverlay.style.display = 'none';
+      }
+
+      console.log('ChartManager initialization complete');
     } catch (error) {
       console.error('Error in initialize:', error);
+
+      // Ensure loading overlay is hidden even if an error occurs
+      const loadingOverlay = document.getElementById('loading-overlay');
+      if (loadingOverlay) {
+        loadingOverlay.style.display = 'none';
+      }
+
+      document.getElementById('data-error').style.display = 'block';
+      document
+        .getElementById('data-error')
+        .querySelector(
+          'p'
+        ).textContent = `Error initializing application: ${error.message}. Please check the console for more details.`;
     }
   }
 
   populateLeagueDropdown() {
-    const dropdown = document.getElementById('league-dropdown');
+    const leagueDropdown = document.getElementById('league-dropdown');
+    if (!leagueDropdown) return;
+
+    // Clear existing options except the first one
+    while (leagueDropdown.options.length > 1) {
+      leagueDropdown.remove(1);
+    }
+
     this.hierarchicalData.leagues.forEach((league) => {
       const option = document.createElement('option');
       option.value = league;
       option.textContent = league;
-      dropdown.appendChild(option);
+      leagueDropdown.appendChild(option);
     });
+
+    console.log(
+      'Populated league dropdown with options:',
+      this.hierarchicalData.leagues
+    );
   }
 
   updateTeamDropdown(league) {
@@ -139,24 +298,80 @@ class ChartManager {
   }
 
   setupHierarchicalFilters() {
-    document
-      .getElementById('league-dropdown')
-      .addEventListener('change', (e) => {
-        this.updateTeamDropdown(e.target.value);
-        this.resetChart();
+    const leagueDropdown = document.getElementById('league-dropdown');
+    const teamDropdown = document.getElementById('team-dropdown');
+    const playerDropdown = document.getElementById('player-dropdown');
+
+    if (!leagueDropdown || !teamDropdown || !playerDropdown) return;
+
+    // League change event
+    leagueDropdown.addEventListener('change', () => {
+      const selectedLeague = leagueDropdown.value;
+      console.log('League selected:', selectedLeague);
+
+      // Clear player and team dropdowns
+      while (teamDropdown.options.length > 1) {
+        teamDropdown.remove(1);
+      }
+      while (playerDropdown.options.length > 1) {
+        playerDropdown.remove(1);
+      }
+
+      // Disable dropdowns if no league selected
+      if (!selectedLeague) {
+        teamDropdown.disabled = true;
+        playerDropdown.disabled = true;
+        return;
+      }
+
+      // Populate team dropdown
+      const teams = this.hierarchicalData.getTeams(selectedLeague);
+      teams.forEach((team) => {
+        const option = document.createElement('option');
+        option.value = team;
+        option.textContent = team;
+        teamDropdown.appendChild(option);
       });
 
-    document.getElementById('team-dropdown').addEventListener('change', (e) => {
-      const league = document.getElementById('league-dropdown').value;
-      this.updatePlayerDropdown(league, e.target.value);
-      this.resetChart();
+      // Enable team dropdown
+      teamDropdown.disabled = false;
+      playerDropdown.disabled = true;
+
+      console.log('Populated team dropdown with options:', teams);
     });
 
-    document
-      .getElementById('player-dropdown')
-      .addEventListener('change', () => {
-        this.updateChart();
+    // Team change event
+    teamDropdown.addEventListener('change', () => {
+      const selectedLeague = leagueDropdown.value;
+      const selectedTeam = teamDropdown.value;
+      console.log('Team selected:', selectedTeam);
+
+      // Clear player dropdown
+      while (playerDropdown.options.length > 1) {
+        playerDropdown.remove(1);
+      }
+
+      if (!selectedTeam) {
+        playerDropdown.disabled = true;
+        return;
+      }
+
+      const players = this.hierarchicalData.getPlayers(
+        selectedLeague,
+        selectedTeam
+      );
+      players.forEach((player) => {
+        const option = document.createElement('option');
+        option.value = player;
+        option.textContent = player;
+        playerDropdown.appendChild(option);
       });
+
+      // Enable player dropdown
+      playerDropdown.disabled = false;
+
+      console.log('Populated player dropdown with options:', players);
+    });
   }
 
   setupEventListeners() {
@@ -183,8 +398,7 @@ class ChartManager {
         segment.classList.add('active');
         // Move slider
         slider.style.transform = `translateX(${index * 100}%)`;
-        // Update metric
-        this.currentMetric = segment.dataset.value;
+        this.currentMetric = segment.dataset.value; // Update metric
         document.getElementById('metric-display').textContent =
           segment.textContent;
         localStorage.setItem('selectedMetric', this.currentMetric);
@@ -197,6 +411,24 @@ class ChartManager {
           // If no player is selected, just reset the chart
           this.resetChart();
         }
+      });
+    });
+  }
+
+  setupTabNavigation() {
+    const tabs = document.querySelectorAll('.tab');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => {
+        // Remove active class from all tabs and contents
+        tabs.forEach((t) => t.classList.remove('active'));
+        tabContents.forEach((c) => c.classList.remove('active'));
+
+        // Add active class to clicked tab and corresponding content
+        tab.classList.add('active');
+        const tabId = tab.getAttribute('data-tab');
+        document.getElementById(tabId).classList.add('active');
       });
     });
   }
@@ -263,5 +495,6 @@ class ChartManager {
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
   const manager = new ChartManager();
+  window.chartManagerInstance = manager;
   manager.initialize();
 });

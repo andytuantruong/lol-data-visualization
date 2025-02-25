@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>LoL Esports Performance Table</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css"
+    />
+    <link rel="stylesheet" href="css/styles.css" />
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="loading-overlay" class="loading-overlay">
+      <div class="loading-spinner"></div>
+      <div class="loading-message">Loading LoL Esports data...</div>
+    </div>
+
+    <div class="container">
+      <div class="header">
+        <div class="title-section">
+          <h1>
+            <span class="stat-icon">📊</span>
+            LoL Esports Performance Table
+          </h1>
+          <p class="subtitle">View and compare player performance metrics</p>
+        </div>
+
+        <div class="navigation-links">
+          <a href="index.html" class="nav-link">Player Chart View</a>
+          <a href="performance.html" class="nav-link active"
+            >Performance Table</a
+          >
+        </div>
+
+      <div class="tab-navigation">
+        <button class="tab active" data-tab="recent-performance">
+          Recent Performance
+        </button>
+        <button class="tab" data-tab="all-time-stats">All-Time Stats</button>
+      </div>
+
+      <div id="recent-performance" class="tab-content active">
+        <div
+          id="performance-table-container"
+          class="performance-table-container"
+        ></div>
+      </div>
+
+      <div id="all-time-stats" class="tab-content">
+        <div id="all-time-stats-container" class="performance-table-container">
+          <div class="table-controls">
+            <div class="metric-filter-container">
+              <label>Filter by Year: </label>
+              <select id="all-time-year-filter" class="filter-select">
+                <option value="all">All Years</option>
+              </select>
+            </div>
+          </div>
+          <table class="performance-table" id="all-time-table">
+            <thead>
+              <tr>
+                <th class="sortable" data-column="player">Player</th>
+                <th>Team</th>
+                <th class="sortable" data-column="year">Year</th>
+                <th class="sortable" data-column="games">Games</th>
+                <th class="sortable" data-column="winRate">Win %</th>
+                <th class="sortable" data-column="avgKills">Avg Kills</th>
+                <th class="sortable" data-column="avgDeaths">Avg Deaths</th>
+                <th class="sortable" data-column="avgAssists">Avg Assists</th>
+                <th class="sortable" data-column="kda">KDA</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <script src="js/dataLoader.js"></script>
+    <script src="js/performanceTable.js"></script>
+    <script src="js/allTimeStats.js"></script>
+    <script src="js/loadingOverlay.js"></script>
+    <script src="js/tabInitializer.js"></script>
+  </body>
+</html>
