@@ -28,9 +28,6 @@ class PerformanceTable {
         throw new Error('No players found in the dataset');
       }
 
-      console.log('Rendering loading table...');
-      this.renderLoadingTable(allPlayers.slice(0, 10));
-
       console.log('Processing player data for all metrics...');
       this.data = [];
 
@@ -57,14 +54,26 @@ class PerformanceTable {
               entry.l3 = this.calculateLastN(playerData, metric, 3);
               entry.l5 = this.calculateLastN(playerData, metric, 5);
               entry.l10 = this.calculateLastN(playerData, metric, 10);
-              entry.h2h = this.calculateH2H(playerData, metric);
-              entry.currentYearDiff = this.calculatePercentOver(
-                playerData.filter(
-                  (d) => d.date.getFullYear() === this.currentYear
-                ),
+
+              // Get current year data
+              const currentYearData = playerData.filter(
+                (d) => d.date.getFullYear() === this.currentYear
+              );
+
+              entry.currentYearDiff =
+                currentYearData.length > 0
+                  ? this.calculatePeriodDiff(
+                      currentYearData,
+                      playerData,
+                      metric
+                    )
+                  : 0;
+
+              entry.percentOver = this.calculatePeriodDiff(
+                playerData,
+                playerData,
                 metric
               );
-              entry.percentOver = this.calculatePercentOver(playerData, metric);
 
               this.data.push(entry);
             }
@@ -139,22 +148,14 @@ class PerformanceTable {
   createTableHeader() {
     const headerRow = this.thead.append('tr');
 
-    headerRow
-      .append('th')
-      .text('Player')
-      .classed('sortable', true)
-      .attr('data-column', 'player');
+    headerRow.append('th').text('Player');
     headerRow.append('th').text('Team');
-    headerRow
-      .append('th')
-      .text('Metric')
-      .classed('sortable', true)
-      .attr('data-column', 'metric');
+    headerRow.append('th').text('Metric');
     headerRow
       .append('th')
       .text('Avg')
       .classed('sortable', true)
-      .attr('data-column', 'expected');
+      .attr('data-column', 'average');
     headerRow
       .append('th')
       .text('L3 +/-')
@@ -170,11 +171,6 @@ class PerformanceTable {
       .text('L10 +/-')
       .classed('sortable', true)
       .attr('data-column', 'l10Diff');
-    headerRow
-      .append('th')
-      .text('H2H +/-')
-      .classed('sortable', true)
-      .attr('data-column', 'h2hDiff');
     headerRow
       .append('th')
       .text(`${this.currentYear} %`)
@@ -256,39 +252,30 @@ class PerformanceTable {
     const sortedData = [...data].sort((a, b) => b.date - a.date);
     const lastN = sortedData.slice(0, Math.min(n, sortedData.length));
 
-    return parseFloat(
-      (lastN.reduce((sum, d) => sum + d[metric], 0) / lastN.length).toFixed(2)
-    );
+    const lastNAverage =
+      lastN.reduce((sum, d) => sum + d[metric], 0) / lastN.length;
+    const overallAverage = this.calculateExpected(data, metric);
+    const percentDiff =
+      overallAverage > 0
+        ? ((lastNAverage - overallAverage) / overallAverage) * 100
+        : 0;
+
+    return parseFloat(percentDiff.toFixed(1));
   }
 
-  // Calculate head-to-head performance against opponents
-  calculateH2H(data, metric) {
-    if (!data || data.length === 0) return 0;
+  // Calculate percentage difference for a specific period compared to overall average
+  calculatePeriodDiff(periodData, allData, metric) {
+    if (!periodData || periodData.length === 0) return 0;
 
-    const opponents = [...new Set(data.map((d) => d.opponent))].filter(Boolean);
-    if (opponents.length === 0) return 0;
+    const periodAverage = this.calculateExpected(periodData, metric);
+    const overallAverage = this.calculateExpected(allData, metric);
 
-    const overallAvg = this.calculateExpected(data, metric);
-    let totalGamesOverAvg = 0;
-    let totalGames = 0;
+    const percentDiff =
+      overallAverage > 0
+        ? ((periodAverage - overallAverage) / overallAverage) * 100
+        : 0;
 
-    opponents.forEach((opponent) => {
-      const opponentGames = data.filter((d) => d.opponent === opponent);
-
-      if (opponentGames.length > 0) {
-        const gamesOverAvg = opponentGames.filter(
-          (d) => d[metric] > overallAvg
-        ).length;
-
-        totalGamesOverAvg += gamesOverAvg;
-        totalGames += opponentGames.length;
-      }
-    });
-
-    const percentOverAvg =
-      totalGames > 0 ? (totalGamesOverAvg / totalGames) * 100 : 0;
-
-    return parseFloat(percentOverAvg.toFixed(1));
+    return parseFloat(percentDiff.toFixed(1));
   }
 
   // Render the table with current data, applying filters and sorting
@@ -327,55 +314,35 @@ class PerformanceTable {
 
     const average = this.calculateExpected(playerData, metric);
 
-    const sortedData = [...playerData].sort((a, b) => b.date - a.date);
-    const last3Games = sortedData.slice(0, Math.min(3, sortedData.length));
-    const last5Games = sortedData.slice(0, Math.min(5, sortedData.length));
-    const last10Games = sortedData.slice(0, Math.min(10, sortedData.length));
-
-    const l3Average =
-      last3Games.length > 0
-        ? d3.mean(last3Games.map((d) => d[metric])) || 0
-        : 0;
-    const l5Average =
-      last5Games.length > 0
-        ? d3.mean(last5Games.map((d) => d[metric])) || 0
-        : 0;
-    const l10Average =
-      last10Games.length > 0
-        ? d3.mean(last10Games.map((d) => d[metric])) || 0
-        : 0;
-
-    const l3Diff = average > 0 ? ((l3Average - average) / average) * 100 : 0;
-    const l5Diff = average > 0 ? ((l5Average - average) / average) * 100 : 0;
-    const l10Diff = average > 0 ? ((l10Average - average) / average) * 100 : 0;
+    const l3Diff = this.calculateLastN(playerData, metric, 3);
+    const l5Diff = this.calculateLastN(playerData, metric, 5);
+    const l10Diff = this.calculateLastN(playerData, metric, 10);
 
     const currentYearData = playerData.filter(
       (d) => d.date.getFullYear() === this.currentYear
     );
 
-    const currentYearOverAvg =
+    const currentYearDiff =
       currentYearData.length > 0
-        ? (currentYearData.filter((d) => d[metric] > average).length /
-            currentYearData.length) *
-          100
+        ? this.calculatePeriodDiff(currentYearData, playerData, metric)
         : 0;
 
-    const allTimePercentOver = this.calculatePercentOver(playerData, metric);
-    const h2hPercentOver = this.calculateH2H(playerData, metric);
-    const h2hDiff = h2hPercentOver - 50;
+    const allTimePercentDiff = this.calculatePeriodDiff(
+      playerData,
+      playerData,
+      metric
+    );
 
     const rowData = {
       player,
       team,
       metric,
-      expected: average,
+      average: average,
       l3Diff,
       l5Diff,
       l10Diff,
-      h2hDiff,
-      h2hPercentOver,
-      currentYearOverAvg,
-      percentOver: allTimePercentOver,
+      currentYearDiff,
+      percentOver: allTimePercentDiff,
       rawData: playerData,
     };
 
@@ -423,26 +390,21 @@ class PerformanceTable {
 
     row
       .append('td')
-      .classed('h2h-percentage', true)
-      .classed('over-performance', h2hDiff > 0)
-      .classed('under-performance', h2hDiff < 0)
-      .html(this.formatPercentage(h2hDiff));
-
-    row
-      .append('td')
       .classed('current-year-percentage', true)
-      .classed('over-performance', currentYearOverAvg > 50)
-      .classed('under-performance', currentYearOverAvg < 50)
+      .classed('over-performance', currentYearDiff > 0)
+      .classed('under-performance', currentYearDiff < 0)
       .html(
-        currentYearData.length > 0 ? `${currentYearOverAvg.toFixed(1)}%` : 'N/A'
+        currentYearData.length > 0
+          ? this.formatPercentage(currentYearDiff)
+          : 'N/A'
       );
 
     row
       .append('td')
       .classed('all-time-percentage', true)
-      .classed('over-performance', allTimePercentOver > 50)
-      .classed('under-performance', allTimePercentOver < 50)
-      .text(`${allTimePercentOver.toFixed(1)}%`);
+      .classed('over-performance', allTimePercentDiff > 0)
+      .classed('under-performance', allTimePercentDiff < 0)
+      .html(this.formatPercentage(allTimePercentDiff));
   }
 
   // Format percentage with + or - sign
@@ -459,13 +421,6 @@ class PerformanceTable {
 
   // Sort data based on current sort column and direction
   sortData() {
-    if (!this.sortColumn || !this.sortDirection) {
-      this.data = [...this.originalData];
-      return;
-    }
-
-    console.log(`Sorting by ${this.sortColumn} in ${this.sortDirection} order`);
-
     this.data.sort((a, b) => {
       let valueA, valueB;
 
@@ -482,67 +437,21 @@ class PerformanceTable {
           valueA = a.metric;
           valueB = b.metric;
           break;
-        case 'expected':
+        case 'average':
           valueA = a.avg || 0;
           valueB = b.avg || 0;
           break;
         case 'l3Diff':
-          const l3DataA = [...a.rawData]
-            .sort((x, y) => y.date - x.date)
-            .slice(0, 3);
-          const l3DataB = [...b.rawData]
-            .sort((x, y) => y.date - x.date)
-            .slice(0, 3);
-          const l3AvgA =
-            l3DataA.length > 0
-              ? d3.mean(l3DataA.map((d) => d[a.metric])) || 0
-              : 0;
-          const l3AvgB =
-            l3DataB.length > 0
-              ? d3.mean(l3DataB.map((d) => d[b.metric])) || 0
-              : 0;
-          valueA = a.avg > 0 ? ((l3AvgA - a.avg) / a.avg) * 100 : 0;
-          valueB = b.avg > 0 ? ((l3AvgB - b.avg) / b.avg) * 100 : 0;
+          valueA = a.l3;
+          valueB = b.l3;
           break;
         case 'l5Diff':
-          const l5DataA = [...a.rawData]
-            .sort((x, y) => y.date - x.date)
-            .slice(0, 5);
-          const l5DataB = [...b.rawData]
-            .sort((x, y) => y.date - x.date)
-            .slice(0, 5);
-          const l5AvgA =
-            l5DataA.length > 0
-              ? d3.mean(l5DataA.map((d) => d[a.metric])) || 0
-              : 0;
-          const l5AvgB =
-            l5DataB.length > 0
-              ? d3.mean(l5DataB.map((d) => d[b.metric])) || 0
-              : 0;
-          valueA = a.avg > 0 ? ((l5AvgA - a.avg) / a.avg) * 100 : 0;
-          valueB = b.avg > 0 ? ((l5AvgB - b.avg) / b.avg) * 100 : 0;
+          valueA = a.l5;
+          valueB = b.l5;
           break;
         case 'l10Diff':
-          const l10DataA = [...a.rawData]
-            .sort((x, y) => y.date - x.date)
-            .slice(0, 10);
-          const l10DataB = [...b.rawData]
-            .sort((x, y) => y.date - x.date)
-            .slice(0, 10);
-          const l10AvgA =
-            l10DataA.length > 0
-              ? d3.mean(l10DataA.map((d) => d[a.metric])) || 0
-              : 0;
-          const l10AvgB =
-            l10DataB.length > 0
-              ? d3.mean(l10DataB.map((d) => d[b.metric])) || 0
-              : 0;
-          valueA = a.avg > 0 ? ((l10AvgA - a.avg) / a.avg) * 100 : 0;
-          valueB = b.avg > 0 ? ((l10AvgB - b.avg) / b.avg) * 100 : 0;
-          break;
-        case 'h2hDiff':
-          valueA = a.h2h - 50;
-          valueB = b.h2h - 50;
+          valueA = a.l10;
+          valueB = b.l10;
           break;
         case 'currentYearDiff':
           valueA = a.currentYearDiff;
@@ -578,14 +487,10 @@ class PerformanceTable {
       console.log(`Column clicked: "${headerText}"`);
 
       const columnMap = {
-        Player: 'player',
-        Team: 'team',
-        Metric: 'metric',
-        Avg: 'expected',
+        Avg: 'average',
         'L3 +/-': 'l3Diff',
         'L5 +/-': 'l5Diff',
         'L10 +/-': 'l10Diff',
-        'H2H +/-': 'h2hDiff',
         [`${this.currentYear} %`]: 'currentYearDiff',
         'All-Time %': 'percentOver',
       };
@@ -610,23 +515,15 @@ class PerformanceTable {
       // Three-state sorting: descending -> ascending -> no sort
       if (column === this.sortColumn) {
         if (this.sortDirection === 'desc') {
-          console.log('Changing from desc to asc');
           this.sortDirection = 'asc';
         } else if (this.sortDirection === 'asc') {
-          console.log('Changing from asc to null (no sort)');
           this.sortColumn = null;
           this.sortDirection = null;
         }
       } else {
         this.sortColumn = column;
 
-        if (column === 'player' || column === 'team' || column === 'metric') {
-          console.log('New text column - setting to asc');
-          this.sortDirection = 'asc';
-        } else {
-          console.log('New numeric column - setting to desc');
-          this.sortDirection = 'desc';
-        }
+        this.sortDirection = 'desc';
       }
 
       console.log(
@@ -765,23 +662,6 @@ class PerformanceTable {
           }, 100);
         }
       }, 100);
-    }
-  }
-
-  // Render a placeholder table while data is loading
-  renderLoadingTable(players) {
-    this.tbody.html('');
-
-    const displayCount = Math.min(20, players.length);
-    for (let i = 0; i < displayCount; i++) {
-      const row = this.tbody.append('tr').classed('data-row', true);
-
-      row.append('td').text(players[i]);
-      row.append('td').text('Loading...');
-
-      for (let j = 0; j < 8; j++) {
-        row.append('td').text('...');
-      }
     }
   }
 }
