@@ -10,6 +10,11 @@ class PerformanceTable {
     this.charts = {};
     this.metricFilter = 'all';
     this.currentYear = new Date().getFullYear();
+
+    // Pagination properties
+    this.currentPage = 1;
+    this.pageSize = 20;
+    this.totalPages = 1;
   }
 
   // Initialize the performance table with player data and set up event listeners
@@ -151,6 +156,76 @@ class PerformanceTable {
     this.createTableHeader();
 
     this.tbody = this.table.append('tbody');
+
+    this.addPaginationControls();
+  }
+
+  // Add pagination controls below the table
+  addPaginationControls() {
+    const paginationContainer = this.container
+      .append('div')
+      .attr('class', 'pagination-controls');
+
+    // Page size selector
+    const pageSizeContainer = paginationContainer
+      .append('div')
+      .attr('class', 'page-size-container');
+
+    pageSizeContainer.append('span').text('Rows per page: ');
+
+    const pageSizeSelect = pageSizeContainer
+      .append('select')
+      .attr('class', 'page-size-select');
+
+    [10, 20, 50, 100].forEach((size) => {
+      pageSizeSelect
+        .append('option')
+        .attr('value', size)
+        .property('selected', size === this.pageSize)
+        .text(size);
+    });
+
+    // Item range display
+    paginationContainer
+      .append('div')
+      .attr('class', 'item-range-display')
+      .text('Showing 0-0 of 0 items');
+
+    // Page navigation
+    const pageNavContainer = paginationContainer
+      .append('div')
+      .attr('class', 'page-nav-container');
+
+    pageNavContainer
+      .append('button')
+      .attr('class', 'page-nav-button first-page')
+      .attr('title', 'First Page')
+      .html('&laquo;');
+
+    pageNavContainer
+      .append('button')
+      .attr('class', 'page-nav-button prev-page')
+      .attr('title', 'Previous Page')
+      .html('&lsaquo;');
+
+    pageNavContainer
+      .append('span')
+      .attr('class', 'page-indicator')
+      .html(
+        'Page <span class="current-page">1</span> of <span class="total-pages">1</span>'
+      );
+
+    pageNavContainer
+      .append('button')
+      .attr('class', 'page-nav-button next-page')
+      .attr('title', 'Next Page')
+      .html('&rsaquo;');
+
+    pageNavContainer
+      .append('button')
+      .attr('class', 'page-nav-button last-page')
+      .attr('title', 'Last Page')
+      .html('&raquo;');
   }
 
   // Create the table header with sortable columns
@@ -251,6 +326,9 @@ class PerformanceTable {
         // Update metric filter
         this.metricFilter = button.getAttribute('data-value');
         this.positionMetricSlider();
+
+        // Reset to first page when changing filter
+        this.currentPage = 1;
 
         // Render the table with the new filter
         this.renderTable();
@@ -427,16 +505,75 @@ class PerformanceTable {
       console.log(`Showing all metrics (${filteredData.length} rows)`);
     }
 
+    // Calculate total pages
+    this.totalPages = Math.max(
+      1,
+      Math.ceil(filteredData.length / this.pageSize)
+    );
+
+    // Ensure current page is valid
+    if (this.currentPage > this.totalPages) {
+      this.currentPage = this.totalPages;
+    }
+
+    // Get data for current page
+    const startIndex = (this.currentPage - 1) * this.pageSize;
+    const endIndex = Math.min(startIndex + this.pageSize, filteredData.length);
+    const pageData = filteredData.slice(startIndex, endIndex);
+
+    console.log(
+      `Showing page ${this.currentPage} of ${this.totalPages} (${pageData.length} rows)`
+    );
+
     // Clear existing table body
     this.tbody.html('');
 
-    // Render each row
-    filteredData.forEach((d) => {
+    // Render each row for current page
+    pageData.forEach((d) => {
       this.createPlayerRow(d.player, d.team, d.metric, d.rawData);
     });
 
+    // Update pagination controls
+    this.updatePaginationControls(filteredData.length);
+
     // Set up player link listeners
     this.setupPlayerLinkListeners();
+  }
+
+  // Update pagination controls with current state
+  updatePaginationControls(totalItems) {
+    // Update page indicator
+    this.container.select('.current-page').text(this.currentPage);
+    this.container.select('.total-pages').text(this.totalPages);
+
+    // Calculate item range being displayed
+    const startItem = Math.min(
+      totalItems,
+      (this.currentPage - 1) * this.pageSize + 1
+    );
+    const endItem = Math.min(totalItems, this.currentPage * this.pageSize);
+
+    // Update item range display
+    this.container
+      .select('.item-range-display')
+      .text(`Showing ${startItem}-${endItem} of ${totalItems} items`);
+
+    // Enable/disable navigation buttons
+    this.container
+      .select('.first-page')
+      .property('disabled', this.currentPage === 1);
+
+    this.container
+      .select('.prev-page')
+      .property('disabled', this.currentPage === 1);
+
+    this.container
+      .select('.next-page')
+      .property('disabled', this.currentPage === this.totalPages);
+
+    this.container
+      .select('.last-page')
+      .property('disabled', this.currentPage === this.totalPages);
   }
 
   // Create a table row for a player-metric combination
@@ -823,6 +960,9 @@ class PerformanceTable {
           this.sortDirection = column === 'player' ? 'asc' : 'desc';
         }
 
+        // Reset to first page when sorting changes
+        this.currentPage = 1;
+
         this.updateSortIndicators(event.currentTarget);
         this.renderTable();
       });
@@ -847,6 +987,9 @@ class PerformanceTable {
         }, 100);
       });
 
+      // Set up pagination event listeners
+      this.setupPaginationListeners();
+
       console.log('Performance table event listeners set up successfully');
     } catch (error) {
       console.error(
@@ -854,6 +997,44 @@ class PerformanceTable {
         error
       );
     }
+  }
+
+  // Set up event listeners for pagination controls
+  setupPaginationListeners() {
+    // Page size selector
+    this.container.select('.page-size-select').on('change', (event) => {
+      this.pageSize = parseInt(event.target.value);
+      this.currentPage = 1; // Reset to first page when changing page size
+      this.renderTable();
+    });
+
+    this.container.select('.first-page').on('click', () => {
+      if (this.currentPage > 1) {
+        this.currentPage = 1;
+        this.renderTable();
+      }
+    });
+
+    this.container.select('.prev-page').on('click', () => {
+      if (this.currentPage > 1) {
+        this.currentPage--;
+        this.renderTable();
+      }
+    });
+
+    this.container.select('.next-page').on('click', () => {
+      if (this.currentPage < this.totalPages) {
+        this.currentPage++;
+        this.renderTable();
+      }
+    });
+
+    this.container.select('.last-page').on('click', () => {
+      if (this.currentPage < this.totalPages) {
+        this.currentPage = this.totalPages;
+        this.renderTable();
+      }
+    });
   }
 
   // Update sort indicators (↑/↓) on column headers

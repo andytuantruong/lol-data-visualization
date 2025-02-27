@@ -853,3 +853,123 @@ input[type='number'].filter-select {
   margin-top: 10px;
   white-space: pre-wrap;
 }
+
+/* Pagination Controls */
+.pagination-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+  padding: 10px;
+  background-color: rgba(30, 30, 40, 0.7);
+  border-radius: 8px;
+  color: #fff;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.page-size-container {
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+}
+
+.page-size-container span {
+  margin-right: 10px;
+  white-space: nowrap;
+}
+
+.page-size-select {
+  background-color: #2a2a3a;
+  color: #fff;
+  border: 1px solid #3a3a4a;
+  border-radius: 4px;
+  padding: 5px 10px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.page-size-select:hover {
+  background-color: #3a3a4a;
+}
+
+.page-nav-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.page-indicator {
+  margin: 0 10px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.page-nav-button {
+  background-color: #2a2a3a;
+  color: #fff;
+  border: 1px solid #3a3a4a;
+  border-radius: 4px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 16px;
+}
+
+.page-nav-button:hover:not(:disabled) {
+  background-color: #3a3a4a;
+}
+
+.page-nav-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.item-range-display {
+  font-size: 14px;
+  color: #ccc;
+  white-space: nowrap;
+  order: 2;
+}
+
+/* Responsive styles for pagination */
+@media (max-width: 768px) {
+  .pagination-controls {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .page-size-container,
+  .page-nav-container,
+  .item-range-display {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .item-range-display {
+    order: 1;
+  }
+
+  .page-size-select {
+    flex-grow: 1;
+    max-width: 100px;
+  }
+}
+
+@media (max-width: 576px) {
+  .page-nav-button {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+  }
+
+  .page-indicator {
+    font-size: 12px;
+  }
+}
