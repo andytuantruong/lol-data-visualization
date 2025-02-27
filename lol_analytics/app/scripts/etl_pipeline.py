@@ -1,21 +1,43 @@
 import pandas as pd
 from pathlib import Path
 import os
+import glob
 
 # Get the absolute path to the project root directory
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 
-def extract(input_path):
+def extract(input_paths):
     try:
-        # Load raw data, specifying dtype for certain columns to avoid mixed type warning
+        # Convert single path to list for consistent processing
+        if isinstance(input_paths, (str, Path)):
+            input_paths = [input_paths]
+        
+        # Specify dtype for certain columns to avoid mixed type warning
         dtype_spec = {
             'side': str, 
             'position': str,
             'playername': str
         }
-        df = pd.read_csv(input_path, dtype=dtype_spec, low_memory=False)
-        print(f"Data extracted from {input_path}")
-        return df
+        
+        # List to store individual dataframes
+        dfs = []
+        
+        # Process each input file
+        for input_path in input_paths:
+            print(f"Extracting data from {input_path}")
+            df = pd.read_csv(input_path, dtype=dtype_spec, low_memory=False)
+            dfs.append(df)
+            print(f"  - Found {len(df)} rows")
+        
+        # Combine all dataframes
+        if len(dfs) > 1:
+            combined_df = pd.concat(dfs, ignore_index=True)
+            print(f"Combined {len(dfs)} files into a dataset with {len(combined_df)} rows")
+        else:
+            combined_df = dfs[0]
+            print(f"Extracted {len(combined_df)} rows from single file")
+            
+        return combined_df
     except Exception as e:
         print(f"Error extracting data: {e}")
         return None
@@ -105,8 +127,13 @@ def organize_by_player(df, output_dir):
     except Exception as e:
         print(f"Error organizing data by player: {e}")
 
-def etl_pipeline(input_path, output_path, player_output_dir=None):
-    df = extract(input_path)
+def etl_pipeline(input_paths, output_path, player_output_dir=None):
+    # Handle glob patterns
+    if isinstance(input_paths, (str, Path)) and ('*' in str(input_paths)):
+        input_paths = glob.glob(str(input_paths))
+        print(f"Found {len(input_paths)} files matching pattern")
+    
+    df = extract(input_paths)
     if df is None:
         return
 
@@ -122,9 +149,9 @@ def etl_pipeline(input_path, output_path, player_output_dir=None):
 
 if __name__ == "__main__":
     # Define input and output paths using absolute paths
-    input_path = PROJECT_ROOT / "data" / "raw" / "2025_LoL_esports_match_data_from_OraclesElixir.csv"
+    input_pattern = PROJECT_ROOT / "data" / "raw" / "*_LoL_esports_match_data_from_OraclesElixir.csv"
     output_path = PROJECT_ROOT / "data" / "processed" / "cleaned_data.csv"
     player_output_dir = PROJECT_ROOT / "data" / "processed" / "players"
 
-    etl_pipeline(input_path, output_path, player_output_dir)
+    etl_pipeline(input_pattern, output_path, player_output_dir)
     print("ETL pipeline complete.")
