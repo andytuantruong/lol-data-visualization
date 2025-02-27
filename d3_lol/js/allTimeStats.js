@@ -48,41 +48,55 @@ class AllTimeStats {
     const processedPlayers = new Set();
     const years = new Set();
 
-    // Process all leagues
-    for (const league of hierarchyData.leagues) {
-      const teams = hierarchyData.getTeams(league);
+    try {
+      console.log('Loading all player data at once...');
+      const allPlayersData = await DataLoader.loadAllPlayersData();
+      console.log(`Loaded data for ${allPlayersData.size} players`);
 
-      // Process all teams in the league
-      for (const team of teams) {
-        const players = hierarchyData.getPlayers(league, team);
+      // Process all leagues
+      for (const league of hierarchyData.leagues) {
+        const teams = hierarchyData.getTeams(league);
 
-        // Process all players in the team
-        for (const player of players) {
-          // Skip if already processed
-          if (processedPlayers.has(player)) continue;
-          processedPlayers.add(player);
+        // Process all teams in the league
+        for (const team of teams) {
+          const players = hierarchyData.getPlayers(league, team);
 
-          try {
-            // Load player data
-            const playerData = await DataLoader.loadPlayerData(player);
+          // Process all players in the team
+          for (const player of players) {
+            // Skip if already processed
+            if (processedPlayers.has(player)) continue;
+            processedPlayers.add(player);
 
-            if (playerData && playerData.length > 0) {
-              playerData.forEach((game) => {
-                const year = game.date.getFullYear();
-                years.add(year);
-              });
+            try {
+              // Get player data from the all players data map
+              const playerData = allPlayersData.get(player);
 
-              // Calculate all-time stats
-              const playerStats = this.calculatePlayerStats(player, playerData);
-              this.data.push(playerStats);
+              if (playerData && playerData.length > 0) {
+                playerData.forEach((game) => {
+                  const year = game.date.getFullYear();
+                  years.add(year);
+                });
+
+                // Calculate all-time stats
+                const playerStats = this.calculatePlayerStats(
+                  player,
+                  playerData
+                );
+                this.data.push(playerStats);
+              }
+            } catch (error) {
+              console.error(
+                `Error processing data for player ${player}:`,
+                error
+              );
             }
-          } catch (error) {
-            console.error(`Error loading data for player ${player}:`, error);
           }
         }
       }
+      this.availableYears = Array.from(years);
+    } catch (error) {
+      console.error('Error loading all player data:', error);
     }
-    this.availableYears = Array.from(years);
   }
 
   calculatePlayerStats(player, playerData) {

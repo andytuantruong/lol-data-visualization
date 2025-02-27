@@ -38,6 +38,14 @@ document.addEventListener('DOMContentLoaded', async function () {
       throw new Error('No player data found. Please check the data source.');
     }
 
+    // Load all player data at once to improve performance
+    console.log('Pre-loading all player data...');
+    if (loadingMessage) {
+      loadingMessage.textContent =
+        'Loading all player data (this may take a moment)...';
+    }
+    await DataLoader.loadAllPlayersData();
+
     // Restore the active tab from localStorage if available
     // This needs to happen after data is loaded but before components are initialized
     restoreActiveTab();

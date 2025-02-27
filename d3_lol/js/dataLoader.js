@@ -5,6 +5,7 @@ class DataLoader {
   static hierarchicalData = null;
   static processedPlayerData = {};
   static playerList = null;
+  static allPlayersData = null;
 
   // Fetch CSV data from the specified path, using cache if available
   static async fetchCSVData() {
@@ -122,6 +123,82 @@ class DataLoader {
     }
   }
 
+  // Load data for all players at once
+  static async loadAllPlayersData() {
+    if (this.allPlayersData) {
+      console.log('Using cached all players data');
+      return this.allPlayersData;
+    }
+
+    try {
+      console.log('Loading data for all players at once...');
+      const csvData = await this.fetchCSVData();
+      const allData = d3.csvParse(csvData);
+
+      const loadingMessage = document.querySelector('.loading-message');
+      if (loadingMessage) {
+        loadingMessage.textContent = 'Parsing player data...';
+      }
+
+      // Group data by player name
+      const playerDataMap = d3.group(allData, (d) => d.playername);
+
+      // Process each player's data
+      const processedData = new Map();
+      let processedCount = 0;
+      const totalPlayers = playerDataMap.size;
+      const updateInterval = Math.max(1, Math.floor(totalPlayers / 10));
+
+      playerDataMap.forEach((playerRows, playerName) => {
+        if (!playerName) return; // Skip empty player names
+
+        const processedRows = playerRows.map((d) => ({
+          date: new Date(d.date),
+          kills: +d.kills,
+          deaths: +d.deaths,
+          assists: +d.assists,
+          result: +d.result,
+          champion: d.champion,
+          teamname: d.teamname,
+          opponent: d.opponent_teamname,
+          league: d.league,
+        }));
+
+        processedData.set(playerName, processedRows);
+
+        // Also cache in the individual player cache
+        this.processedPlayerData[playerName] = processedRows;
+
+        processedCount++;
+
+        // Update progress periodically
+        if (
+          processedCount % updateInterval === 0 ||
+          processedCount === totalPlayers
+        ) {
+          const progressPercent = Math.round(
+            (processedCount / totalPlayers) * 100
+          );
+          console.log(
+            `Processed data for ${processedCount}/${totalPlayers} players (${progressPercent}%)`
+          );
+
+          if (loadingMessage) {
+            loadingMessage.textContent = `Processing player data (${progressPercent}%)...`;
+          }
+        }
+      });
+
+      this.allPlayersData = processedData;
+      console.log(`Processed data for ${processedData.size} players`);
+
+      return processedData;
+    } catch (error) {
+      console.error('Error loading all players data:', error);
+      throw error;
+    }
+  }
+
   // Load and process data for a specific player
   static async loadPlayerData(playerName) {
     if (!playerName) {
@@ -129,9 +206,16 @@ class DataLoader {
       throw new Error('Player name is required');
     }
 
+    // Check if we already have this player's data in cache
     if (this.processedPlayerData[playerName]) {
       console.log(`Using cached data for player: ${playerName}`);
       return this.processedPlayerData[playerName];
+    }
+
+    // If we have all players data loaded, use that instead of making a new request
+    if (this.allPlayersData && this.allPlayersData.has(playerName)) {
+      console.log(`Using data from all players cache for: ${playerName}`);
+      return this.allPlayersData.get(playerName);
     }
 
     try {

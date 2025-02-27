@@ -38,16 +38,25 @@ class PerformanceTable {
         throw new Error('No players found in the dataset');
       }
 
-      console.log('Processing player data for all metrics...');
+      const loadingMessage = document.querySelector('.loading-message');
+      if (loadingMessage) {
+        loadingMessage.textContent = 'Loading player data...';
+      }
+
+      console.log('Loading all player data at once...');
       this.data = [];
 
+      // Load all player data in a single request
+      const allPlayersData = await DataLoader.loadAllPlayersData();
+
+      // Process the data for each player
       let processedCount = 0;
       const totalPlayers = allPlayers.length;
       const updateInterval = Math.max(1, Math.floor(totalPlayers / 10));
 
-      for (const player of allPlayers) {
+      allPlayers.forEach((player) => {
         try {
-          const playerData = await DataLoader.loadPlayerData(player);
+          const playerData = allPlayersData.get(player);
 
           if (playerData && playerData.length > 0) {
             const team = playerData[0].teamname;
@@ -104,20 +113,14 @@ class PerformanceTable {
               `Processed ${processedCount}/${totalPlayers} players (${progressPercent}%)`
             );
 
-            const loadingMessage = document.querySelector('.loading-message');
             if (loadingMessage) {
-              loadingMessage.textContent = `Loading player data (${progressPercent}%)...`;
+              loadingMessage.textContent = `Processing player data (${progressPercent}%)...`;
             }
-
-            this.renderTable();
-
-            // Reposition the slider during processing to ensure it stays visible
-            this.ensureAllButtonHighlighted();
           }
         } catch (error) {
           console.error(`Error processing player ${player}:`, error);
         }
-      }
+      });
 
       this.originalData = [...this.data];
 
@@ -529,9 +532,23 @@ class PerformanceTable {
     this.tbody.html('');
 
     // Render each row for current page
+    const fragment = document.createDocumentFragment();
+    const tbody = document.createElement('tbody');
+
+    // Use a more efficient approach for creating rows
     pageData.forEach((d) => {
-      this.createPlayerRow(d.player, d.team, d.metric, d.rawData);
+      const row = document.createElement('tr');
+      row.className = 'data-row';
+
+      this.populateRow(row, d.player, d.team, d.metric, d.rawData);
+      tbody.appendChild(row);
     });
+
+    fragment.appendChild(tbody);
+    this.tbody
+      .node()
+      .parentNode.replaceChild(fragment.firstChild, this.tbody.node());
+    this.tbody = d3.select(tbody);
 
     // Update pagination controls
     this.updatePaginationControls(filteredData.length);
@@ -540,44 +557,8 @@ class PerformanceTable {
     this.setupPlayerLinkListeners();
   }
 
-  // Update pagination controls with current state
-  updatePaginationControls(totalItems) {
-    // Update page indicator
-    this.container.select('.current-page').text(this.currentPage);
-    this.container.select('.total-pages').text(this.totalPages);
-
-    // Calculate item range being displayed
-    const startItem = Math.min(
-      totalItems,
-      (this.currentPage - 1) * this.pageSize + 1
-    );
-    const endItem = Math.min(totalItems, this.currentPage * this.pageSize);
-
-    // Update item range display
-    this.container
-      .select('.item-range-display')
-      .text(`Showing ${startItem}-${endItem} of ${totalItems} items`);
-
-    // Enable/disable navigation buttons
-    this.container
-      .select('.first-page')
-      .property('disabled', this.currentPage === 1);
-
-    this.container
-      .select('.prev-page')
-      .property('disabled', this.currentPage === 1);
-
-    this.container
-      .select('.next-page')
-      .property('disabled', this.currentPage === this.totalPages);
-
-    this.container
-      .select('.last-page')
-      .property('disabled', this.currentPage === this.totalPages);
-  }
-
-  // Create a table row for a player-metric combination
-  createPlayerRow(player, team, metric, playerData) {
+  // Populate a table row with player data
+  populateRow(row, player, team, metric, playerData) {
     // Sort data by date (most recent first) to ensure we're using the latest games
     const sortedData = [...playerData].sort((a, b) => b.date - a.date);
 
@@ -644,74 +625,110 @@ class PerformanceTable {
     const allTimeDiff =
       expected > 0 ? ((allTimeAvg - expected) / expected) * 100 : 0;
 
-    // Create row
-    const row = this.tbody.append('tr').classed('data-row', true);
-
     // Add player name with link
-    const playerCell = row.append('td');
-    playerCell
-      .append('a')
-      .attr('href', '#')
-      .classed('player-link', true)
-      .attr('data-player', player)
-      .attr('data-metric', metric)
-      .text(player);
+    let cell = document.createElement('td');
+    let link = document.createElement('a');
+    link.href = '#';
+    link.className = 'player-link';
+    link.setAttribute('data-player', player);
+    link.setAttribute('data-metric', metric);
+    link.textContent = player;
+    cell.appendChild(link);
+    row.appendChild(cell);
 
     // Add team name
-    row.append('td').text(team);
+    cell = document.createElement('td');
+    cell.textContent = team;
+    row.appendChild(cell);
 
     // Add metric name
-    row
-      .append('td')
-      .classed('metric-name', true)
-      .text(this.formatMetricName(metric));
+    cell = document.createElement('td');
+    cell.className = 'metric-name';
+    cell.textContent = this.formatMetricName(metric);
+    row.appendChild(cell);
 
     // Add expected value
-    row.append('td').text(expected.toFixed(2));
+    cell = document.createElement('td');
+    cell.textContent = expected.toFixed(2);
+    row.appendChild(cell);
 
     // Add L3 average with performance indicators
-    row
-      .append('td')
-      .classed('l3-percentage', true)
-      .classed('over-performance', l3Diff > 0)
-      .classed('under-performance', l3Diff < 0)
-      .html(this.formatPercentage(l3Diff));
+    cell = document.createElement('td');
+    cell.className = 'l3-percentage';
+    if (l3Diff > 0) cell.classList.add('over-performance');
+    if (l3Diff < 0) cell.classList.add('under-performance');
+    cell.innerHTML = this.formatPercentage(l3Diff);
+    row.appendChild(cell);
 
     // Add L5 average with performance indicators
-    row
-      .append('td')
-      .classed('l5-percentage', true)
-      .classed('over-performance', l5Diff > 0)
-      .classed('under-performance', l5Diff < 0)
-      .html(this.formatPercentage(l5Diff));
+    cell = document.createElement('td');
+    cell.className = 'l5-percentage';
+    if (l5Diff > 0) cell.classList.add('over-performance');
+    if (l5Diff < 0) cell.classList.add('under-performance');
+    cell.innerHTML = this.formatPercentage(l5Diff);
+    row.appendChild(cell);
 
     // Add L10 average with performance indicators
-    row
-      .append('td')
-      .classed('l10-percentage', true)
-      .classed('over-performance', l10Diff > 0)
-      .classed('under-performance', l10Diff < 0)
-      .html(this.formatPercentage(l10Diff));
+    cell = document.createElement('td');
+    cell.className = 'l10-percentage';
+    if (l10Diff > 0) cell.classList.add('over-performance');
+    if (l10Diff < 0) cell.classList.add('under-performance');
+    cell.innerHTML = this.formatPercentage(l10Diff);
+    row.appendChild(cell);
 
     // Add current year percentage with performance indicators
-    row
-      .append('td')
-      .classed('current-year-percentage', true)
-      .classed('over-performance', currentYearDiff > 0)
-      .classed('under-performance', currentYearDiff < 0)
-      .html(
-        currentYearData.length > 0
-          ? this.formatPercentage(currentYearDiff)
-          : 'N/A'
-      );
+    cell = document.createElement('td');
+    cell.className = 'current-year-percentage';
+    if (currentYearDiff > 0) cell.classList.add('over-performance');
+    if (currentYearDiff < 0) cell.classList.add('under-performance');
+    cell.innerHTML =
+      currentYearData.length > 0
+        ? this.formatPercentage(currentYearDiff)
+        : 'N/A';
+    row.appendChild(cell);
 
     // Add all-time percentage with performance indicators
-    row
-      .append('td')
-      .classed('all-time-percentage', true)
-      .classed('over-performance', allTimeDiff > 0)
-      .classed('under-performance', allTimeDiff < 0)
-      .html(this.formatPercentage(allTimeDiff));
+    cell = document.createElement('td');
+    cell.className = 'all-time-percentage';
+    if (allTimeDiff > 0) cell.classList.add('over-performance');
+    if (allTimeDiff < 0) cell.classList.add('under-performance');
+    cell.innerHTML = this.formatPercentage(allTimeDiff);
+    row.appendChild(cell);
+  }
+
+  // Update pagination controls with current state
+  updatePaginationControls(totalItems) {
+    // Update page indicator
+    this.container.select('.current-page').text(this.currentPage);
+    this.container.select('.total-pages').text(this.totalPages);
+
+    // Calculate item range being displayed
+    const startItem = Math.min(
+      totalItems,
+      (this.currentPage - 1) * this.pageSize + 1
+    );
+    const endItem = Math.min(totalItems, this.currentPage * this.pageSize);
+
+    this.container
+      .select('.item-range-display')
+      .text(`Showing ${startItem}-${endItem} of ${totalItems} items`);
+
+    // Enable/disable navigation buttons
+    this.container
+      .select('.first-page')
+      .property('disabled', this.currentPage === 1);
+
+    this.container
+      .select('.prev-page')
+      .property('disabled', this.currentPage === 1);
+
+    this.container
+      .select('.next-page')
+      .property('disabled', this.currentPage === this.totalPages);
+
+    this.container
+      .select('.last-page')
+      .property('disabled', this.currentPage === this.totalPages);
   }
 
   // Format percentage with + or - sign
