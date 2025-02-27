@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
-    <title>LoL Esports Performance Table</title>
+    <title>LoL Esports Performance Dashboard</title>
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css"
@@ -30,23 +30,18 @@
         <div class="title-section">
           <h1>
             <span class="stat-icon">📊</span>
-            LoL Esports Performance Table
+            LoL Esports Performance Dashboard
           </h1>
           <p class="subtitle">View and compare player performance metrics</p>
         </div>
-
-        <div class="navigation-links">
-          <a href="index.html" class="nav-link">Player Chart View</a>
-          <a href="performance.html" class="nav-link active"
-            >Performance Table</a
-          >
-        </div>
+      </div>
 
       <div class="tab-navigation">
         <button class="tab active" data-tab="recent-performance">
           Recent Performance
         </button>
         <button class="tab" data-tab="all-time-stats">All-Time Stats</button>
+        <button class="tab" data-tab="player-chart">Player Chart</button>
       </div>
 
       <div id="recent-performance" class="tab-content active">
@@ -84,8 +79,61 @@
           </table>
         </div>
       </div>
+
+      <div id="player-chart" class="tab-content">
+        <div class="player-stats">
+          <div class="stats-summary">
+            <div class="stat">
+              <span>Average:</span>
+              <span id="avg-value" class="highlight">--</span>
+            </div>
+            <div class="stat">
+              <span>Median:</span>
+              <span id="median-value" class="highlight">--</span>
+            </div>
+          </div>
+        </div>
+        <div class="controls">
+          <div class="filter-group">
+            <div class="filter-item">
+              <label for="league-dropdown">League</label>
+              <select id="league-dropdown" class="filter-select">
+                <option value="">Select League...</option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <label for="team-dropdown">Team</label>
+              <select id="team-dropdown" class="filter-select" disabled>
+                <option value="">Select Team...</option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <label for="player-dropdown">Player</label>
+              <select id="player-dropdown" class="filter-select" disabled>
+                <option value="">Select Player...</option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <label>Metric:</label>
+              <div class="segmented-control">
+                <div class="slider"></div>
+                <button class="segment active" data-value="kills">Kills</button>
+                <button class="segment" data-value="deaths">Deaths</button>
+                <button class="segment" data-value="assists">Assists</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="chart-container"></div>
+        <div class="error-message" id="chart-error" style="display: none">
+          Error loading data. Please try again.
+        </div>
+      </div>
     </div>
+
     <script src="js/dataLoader.js"></script>
+    <script src="js/chart.js"></script>
+    <script src="js/main.js"></script>
     <script src="js/performanceTable.js"></script>
     <script src="js/allTimeStats.js"></script>
     <script src="js/loadingOverlay.js"></script>

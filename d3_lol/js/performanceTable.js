@@ -8,7 +8,7 @@ class PerformanceTable {
     this.expandedRows = new Set();
     this.metrics = ['kills', 'deaths', 'assists'];
     this.charts = {};
-    this.metricFilter = null;
+    this.metricFilter = 'all';
     this.currentYear = new Date().getFullYear();
   }
 
@@ -19,6 +19,11 @@ class PerformanceTable {
 
       this.createTableStructure();
       this.addMetricFilter();
+
+      // Ensure the "All" button is highlighted and slider is positioned immediately after adding the filter
+      setTimeout(() => {
+        this.ensureAllButtonHighlighted();
+      }, 50);
 
       console.log('Loading player list...');
       const allPlayers = await DataLoader.loadPlayerList();
@@ -100,6 +105,9 @@ class PerformanceTable {
             }
 
             this.renderTable();
+
+            // Reposition the slider during processing to ensure it stays visible
+            this.ensureAllButtonHighlighted();
           }
         } catch (error) {
           console.error(`Error processing player ${player}:`, error);
@@ -116,6 +124,11 @@ class PerformanceTable {
       this.setupEventListeners();
       this.setupPlayerLinkListeners();
 
+      // Final check to ensure "All" button is highlighted and slider is positioned
+      setTimeout(() => {
+        this.ensureAllButtonHighlighted();
+      }, 100);
+
       console.log('Performance Table initialization complete');
     } catch (error) {
       console.error('Error initializing performance table:', error);
@@ -127,12 +140,8 @@ class PerformanceTable {
   createTableStructure() {
     this.container.html('');
 
-    this.container
-      .append('div')
-      .attr('class', 'table-controls')
-      .html(
-        '<div class="metric-filter-container"><label>Filter by Metric: </label></div>'
-      );
+    // Create table controls container without the label
+    this.container.append('div').attr('class', 'table-controls');
 
     this.table = this.container
       .append('table')
@@ -173,58 +182,172 @@ class PerformanceTable {
       .attr('data-column', 'l10Diff');
     headerRow
       .append('th')
-      .text(`${this.currentYear} %`)
+      .text(`${this.currentYear} +/-`)
       .classed('sortable', true)
       .attr('data-column', 'currentYearDiff');
     headerRow
       .append('th')
-      .text('All-Time %')
+      .text('All-Time +/-')
       .classed('sortable', true)
       .attr('data-column', 'percentOver');
   }
 
-  // Add metric filter buttons (All, Kills, Deaths, Assists)
+  // Add metric filter buttons (Kills, Deaths, Assists)
   addMetricFilter() {
-    const filterContainer = this.container.select('.metric-filter-container');
+    // Create a container for the metric filter
+    const filterContainer = document.createElement('div');
+    filterContainer.className = 'metric-filter-container';
 
-    const segmentedControl = filterContainer
-      .append('div')
-      .attr('class', 'segmented-control metric-filter');
+    // Add a label
+    const label = document.createElement('label');
+    label.textContent = 'Filter by Metric:';
+    filterContainer.appendChild(label);
 
-    const slider = segmentedControl.append('div').attr('class', 'slider');
-    slider.style('width', '25%');
+    // Create a segmented control for the metric filter
+    const segmentedControl = document.createElement('div');
+    segmentedControl.className = 'segmented-control';
 
-    const allButton = segmentedControl
-      .append('button')
-      .attr('class', 'segment active')
-      .attr('data-value', 'all')
-      .text('All');
+    // Create a slider element
+    const slider = document.createElement('div');
+    slider.className = 'slider';
+    segmentedControl.appendChild(slider);
 
-    this.metrics.forEach((metric) => {
-      segmentedControl
-        .append('button')
-        .attr('class', 'segment')
-        .attr('data-value', metric)
-        .text(metric.charAt(0).toUpperCase() + metric.slice(1));
+    // Create "All" button and set it as active by default
+    const allButton = document.createElement('button');
+    allButton.className = 'segment active';
+    allButton.setAttribute('data-value', 'all');
+    allButton.textContent = 'All';
+    segmentedControl.appendChild(allButton);
+
+    // Create buttons for each metric
+    const metrics = ['kills', 'deaths', 'assists'];
+    metrics.forEach((metric) => {
+      const button = document.createElement('button');
+      button.className = 'segment';
+      button.setAttribute('data-value', metric);
+      button.textContent = this.formatMetricName(metric);
+      segmentedControl.appendChild(button);
     });
 
-    const segments = segmentedControl.selectAll('.segment');
+    // Add the segmented control to the filter container
+    filterContainer.appendChild(segmentedControl);
 
-    segments.nodes().forEach((segment, index) => {
-      segment.addEventListener('click', () => {
-        segments.nodes().forEach((s) => s.classList.remove('active'));
-        segment.classList.add('active');
+    // Add the filter container to the table container
+    this.container.node().prepend(filterContainer);
 
-        slider.style('transform', `translateX(${index * 100}%)`);
+    // Set the current metric filter to "all" by default
+    this.metricFilter = 'all';
 
-        const metricValue = segment.getAttribute('data-value');
-        this.metricFilter = metricValue === 'all' ? null : metricValue;
+    // Add event listeners for all buttons
+    const buttons = segmentedControl.querySelectorAll('.segment');
+    buttons.forEach((button) => {
+      button.addEventListener('click', (event) => {
+        // Remove active class from all buttons
+        buttons.forEach((btn) => btn.classList.remove('active'));
 
+        // Add active class to clicked button
+        button.classList.add('active');
+
+        // Update metric filter
+        this.metricFilter = button.getAttribute('data-value');
+        this.positionMetricSlider();
+
+        // Render the table with the new filter
         this.renderTable();
       });
     });
+  }
 
-    this.metricFilter = null;
+  positionMetricSlider() {
+    const segmentedControl = this.container.select('.segmented-control').node();
+    if (!segmentedControl) return;
+
+    const activeSegment = segmentedControl.querySelector('.segment.active');
+    const slider = segmentedControl.querySelector('.slider');
+
+    if (activeSegment && slider) {
+      const rect = activeSegment.getBoundingClientRect();
+      const parentRect = segmentedControl.getBoundingClientRect();
+
+      // Position the slider under the active segment
+      slider.style.width = rect.width + 'px';
+      slider.style.left = rect.left - parentRect.left + 'px';
+
+      console.log(
+        `Positioned slider under "${activeSegment.textContent}" button`
+      );
+    } else {
+      console.warn(
+        'Could not position slider: active segment or slider not found'
+      );
+
+      // If no active segment is found, default to the "All" button
+      const allButton = segmentedControl.querySelector(
+        '.segment[data-value="all"]'
+      );
+      if (allButton && slider) {
+        allButton.classList.add('active');
+        this.metricFilter = 'all';
+
+        // Position the slider after the button has been made active
+        setTimeout(() => {
+          const rect = allButton.getBoundingClientRect();
+          const parentRect = segmentedControl.getBoundingClientRect();
+          slider.style.width = rect.width + 'px';
+          slider.style.left = rect.left - parentRect.left + 'px';
+
+          console.log('Defaulted to "All" button and positioned slider');
+        }, 0);
+      }
+    }
+  }
+
+  // Add a method to ensure the "All" button is highlighted on initialization
+  ensureAllButtonHighlighted() {
+    const segmentedControl = this.container.select('.segmented-control').node();
+    if (!segmentedControl) {
+      console.warn(
+        'Could not find segmented control to highlight "All" button'
+      );
+      return;
+    }
+
+    // Find the "All" button
+    const allButton = segmentedControl.querySelector(
+      '.segment[data-value="all"]'
+    );
+
+    if (!allButton) {
+      console.warn('Could not find "All" button in segmented control');
+      return;
+    }
+
+    // Remove active class from all buttons
+    segmentedControl.querySelectorAll('.segment').forEach((segment) => {
+      segment.classList.remove('active');
+    });
+
+    // Add active class to the "All" button
+    allButton.classList.add('active');
+
+    // Update the metric filter
+    this.metricFilter = 'all';
+
+    // Get the slider element
+    const slider = segmentedControl.querySelector('.slider');
+    if (!slider) {
+      console.warn('Could not find slider element in segmented control');
+      return;
+    }
+
+    // Position the slider directly
+    const rect = allButton.getBoundingClientRect();
+    const parentRect = segmentedControl.getBoundingClientRect();
+
+    slider.style.width = rect.width + 'px';
+    slider.style.left = rect.left - parentRect.left + 'px';
+
+    console.log('Successfully highlighted "All" button and positioned slider');
   }
 
   // Calculate the average value for a metric
@@ -267,9 +390,13 @@ class PerformanceTable {
   calculatePeriodDiff(periodData, allData, metric) {
     if (!periodData || periodData.length === 0) return 0;
 
+    // Calculate the average for the period
     const periodAverage = this.calculateExpected(periodData, metric);
+
+    // Calculate the overall average
     const overallAverage = this.calculateExpected(allData, metric);
 
+    // Calculate percentage difference between the two averages
     const percentDiff =
       overallAverage > 0
         ? ((periodAverage - overallAverage) / overallAverage) * 100
@@ -282,74 +409,110 @@ class PerformanceTable {
   renderTable() {
     console.log(`Rendering table with ${this.data.length} entries`);
 
+    // Apply sorting if needed
     if (this.sortColumn && this.sortDirection) {
       this.sortData();
     }
 
+    // Filter data based on metric filter
     let filteredData = this.data;
-    if (this.metricFilter) {
-      console.log(`Filtering by metric: ${this.metricFilter}`);
+
+    // Apply metric filter if not set to "all"
+    if (this.metricFilter !== 'all') {
       filteredData = this.data.filter((d) => d.metric === this.metricFilter);
+      console.log(
+        `Filtered to ${filteredData.length} rows with metric: ${this.metricFilter}`
+      );
+    } else {
+      console.log(`Showing all metrics (${filteredData.length} rows)`);
     }
 
-    console.log(`Displaying ${filteredData.length} rows after filtering`);
-
+    // Clear existing table body
     this.tbody.html('');
 
+    // Render each row
     filteredData.forEach((d) => {
       this.createPlayerRow(d.player, d.team, d.metric, d.rawData);
     });
 
+    // Set up player link listeners
     this.setupPlayerLinkListeners();
   }
 
   // Create a table row for a player-metric combination
   createPlayerRow(player, team, metric, playerData) {
-    const row = this.tbody.append('tr').classed('data-row', true);
+    // Sort data by date (most recent first) to ensure we're using the latest games
+    const sortedData = [...playerData].sort((a, b) => b.date - a.date);
 
-    if (!playerData || playerData.length === 0) {
-      console.warn(`No data available for player ${player}, metric ${metric}`);
-      return;
-    }
+    // Get the most recent games for calculations
+    const recentGames = sortedData.slice(0, 5);
 
-    const average = this.calculateExpected(playerData, metric);
+    // Calculate the expected value (overall average for this metric)
+    const expected = this.calculateExpected(playerData, metric);
 
-    const l3Diff = this.calculateLastN(playerData, metric, 3);
-    const l5Diff = this.calculateLastN(playerData, metric, 5);
-    const l10Diff = this.calculateLastN(playerData, metric, 10);
-
-    const currentYearData = playerData.filter(
-      (d) => d.date.getFullYear() === this.currentYear
-    );
-
-    const currentYearDiff =
-      currentYearData.length > 0
-        ? this.calculatePeriodDiff(currentYearData, playerData, metric)
+    // Calculate the actual value (average of most recent 5 games)
+    const actual =
+      recentGames.length > 0
+        ? recentGames.reduce((sum, d) => sum + d[metric], 0) /
+          recentGames.length
         : 0;
 
-    const allTimePercentDiff = this.calculatePeriodDiff(
-      playerData,
-      playerData,
-      metric
+    // Calculate the last 3, 5, 10 game averages
+    const last3Games = sortedData.slice(0, 3);
+    const last5Games = sortedData.slice(0, 5);
+    const last10Games = sortedData.slice(0, 10);
+
+    const l3Avg =
+      last3Games.length > 0
+        ? last3Games.reduce((sum, d) => sum + d[metric], 0) / last3Games.length
+        : 0;
+
+    const l5Avg =
+      last5Games.length > 0
+        ? last5Games.reduce((sum, d) => sum + d[metric], 0) / last5Games.length
+        : 0;
+
+    const l10Avg =
+      last10Games.length > 0
+        ? last10Games.reduce((sum, d) => sum + d[metric], 0) /
+          last10Games.length
+        : 0;
+
+    // Calculate percentage differences from expected
+    const l3Diff = expected > 0 ? ((l3Avg - expected) / expected) * 100 : 0;
+    const l5Diff = expected > 0 ? ((l5Avg - expected) / expected) * 100 : 0;
+    const l10Diff = expected > 0 ? ((l10Avg - expected) / expected) * 100 : 0;
+
+    // Calculate current year data
+    const currentYear = new Date().getFullYear();
+    const currentYearData = playerData.filter(
+      (d) => d.date.getFullYear() === currentYear
     );
 
-    const rowData = {
-      player,
-      team,
-      metric,
-      average: average,
-      l3Diff,
-      l5Diff,
-      l10Diff,
-      currentYearDiff,
-      percentOver: allTimePercentDiff,
-      rawData: playerData,
-    };
+    // Calculate the current year average
+    const currentYearAvg =
+      currentYearData.length > 0
+        ? currentYearData.reduce((sum, d) => sum + d[metric], 0) /
+          currentYearData.length
+        : 0;
 
-    row.datum(rowData);
+    // Calculate percentage difference between current year average and overall average
+    const currentYearDiff =
+      expected > 0 && currentYearData.length > 0
+        ? ((currentYearAvg - expected) / expected) * 100
+        : 0;
 
-    row
-      .append('td')
+    // For all-time, this should be 0 or very close to 0 since all data is from 2025
+    const allTimeAvg = this.calculateExpected(playerData, metric);
+    const allTimeDiff =
+      expected > 0 ? ((allTimeAvg - expected) / expected) * 100 : 0;
+
+    // Create row
+    const row = this.tbody.append('tr').classed('data-row', true);
+
+    // Add player name with link
+    const playerCell = row.append('td');
+    playerCell
       .append('a')
       .attr('href', '#')
       .classed('player-link', true)
@@ -357,16 +520,19 @@ class PerformanceTable {
       .attr('data-metric', metric)
       .text(player);
 
-    row.append('td').text(team || 'Unknown');
+    // Add team name
+    row.append('td').text(team);
 
+    // Add metric name
     row
       .append('td')
-      .html(
-        `<span class="metric-name">${this.formatMetricName(metric)}</span>`
-      );
+      .classed('metric-name', true)
+      .text(this.formatMetricName(metric));
 
-    row.append('td').classed('player-metric', true).text(average.toFixed(1));
+    // Add expected value
+    row.append('td').text(expected.toFixed(2));
 
+    // Add L3 average with performance indicators
     row
       .append('td')
       .classed('l3-percentage', true)
@@ -374,6 +540,7 @@ class PerformanceTable {
       .classed('under-performance', l3Diff < 0)
       .html(this.formatPercentage(l3Diff));
 
+    // Add L5 average with performance indicators
     row
       .append('td')
       .classed('l5-percentage', true)
@@ -381,6 +548,7 @@ class PerformanceTable {
       .classed('under-performance', l5Diff < 0)
       .html(this.formatPercentage(l5Diff));
 
+    // Add L10 average with performance indicators
     row
       .append('td')
       .classed('l10-percentage', true)
@@ -388,6 +556,7 @@ class PerformanceTable {
       .classed('under-performance', l10Diff < 0)
       .html(this.formatPercentage(l10Diff));
 
+    // Add current year percentage with performance indicators
     row
       .append('td')
       .classed('current-year-percentage', true)
@@ -399,12 +568,13 @@ class PerformanceTable {
           : 'N/A'
       );
 
+    // Add all-time percentage with performance indicators
     row
       .append('td')
       .classed('all-time-percentage', true)
-      .classed('over-performance', allTimePercentDiff > 0)
-      .classed('under-performance', allTimePercentDiff < 0)
-      .html(this.formatPercentage(allTimePercentDiff));
+      .classed('over-performance', allTimeDiff > 0)
+      .classed('under-performance', allTimeDiff < 0)
+      .html(this.formatPercentage(allTimeDiff));
   }
 
   // Format percentage with + or - sign
@@ -421,118 +591,269 @@ class PerformanceTable {
 
   // Sort data based on current sort column and direction
   sortData() {
+    if (!this.sortColumn || !this.sortDirection) {
+      return;
+    }
+
+    console.log(`Sorting by ${this.sortColumn} in ${this.sortDirection} order`);
+
     this.data.sort((a, b) => {
       let valueA, valueB;
 
-      switch (this.sortColumn) {
-        case 'player':
-          valueA = a.player;
-          valueB = b.player;
-          break;
-        case 'team':
-          valueA = a.team || '';
-          valueB = b.team || '';
-          break;
-        case 'metric':
-          valueA = a.metric;
-          valueB = b.metric;
-          break;
-        case 'average':
-          valueA = a.avg || 0;
-          valueB = b.avg || 0;
-          break;
-        case 'l3Diff':
-          valueA = a.l3;
-          valueB = b.l3;
-          break;
-        case 'l5Diff':
-          valueA = a.l5;
-          valueB = b.l5;
-          break;
-        case 'l10Diff':
-          valueA = a.l10;
-          valueB = b.l10;
-          break;
-        case 'currentYearDiff':
-          valueA = a.currentYearDiff;
-          valueB = b.currentYearDiff;
-          break;
-        case 'percentOver':
-          valueA = a.percentOver;
-          valueB = b.percentOver;
-          break;
-        default:
-          valueA = a[this.sortColumn] || 0;
-          valueB = b[this.sortColumn] || 0;
+      // For each player-metric combination, calculate the sort value on demand
+      if (
+        a.player &&
+        a.metric &&
+        a.rawData &&
+        b.player &&
+        b.metric &&
+        b.rawData
+      ) {
+        const metricA = a.metric;
+        const metricB = b.metric;
+        const playerDataA = a.rawData;
+        const playerDataB = b.rawData;
+
+        // Sort by date (most recent first)
+        const sortedDataA = [...playerDataA].sort((x, y) => y.date - x.date);
+        const sortedDataB = [...playerDataB].sort((x, y) => y.date - x.date);
+
+        // Calculate values based on sort column
+        switch (this.sortColumn) {
+          case 'average':
+            valueA = this.calculateExpected(playerDataA, metricA);
+            valueB = this.calculateExpected(playerDataB, metricB);
+            break;
+
+          case 'l3Diff':
+            const last3GamesA = sortedDataA.slice(0, 3);
+            const last3GamesB = sortedDataB.slice(0, 3);
+
+            const l3AvgA =
+              last3GamesA.length > 0
+                ? last3GamesA.reduce((sum, d) => sum + d[metricA], 0) /
+                  last3GamesA.length
+                : 0;
+
+            const l3AvgB =
+              last3GamesB.length > 0
+                ? last3GamesB.reduce((sum, d) => sum + d[metricB], 0) /
+                  last3GamesB.length
+                : 0;
+
+            const expectedA = this.calculateExpected(playerDataA, metricA);
+            const expectedB = this.calculateExpected(playerDataB, metricB);
+
+            valueA =
+              expectedA > 0 ? ((l3AvgA - expectedA) / expectedA) * 100 : 0;
+            valueB =
+              expectedB > 0 ? ((l3AvgB - expectedB) / expectedB) * 100 : 0;
+            break;
+
+          case 'l5Diff':
+            const last5GamesA = sortedDataA.slice(0, 5);
+            const last5GamesB = sortedDataB.slice(0, 5);
+
+            const l5AvgA =
+              last5GamesA.length > 0
+                ? last5GamesA.reduce((sum, d) => sum + d[metricA], 0) /
+                  last5GamesA.length
+                : 0;
+
+            const l5AvgB =
+              last5GamesB.length > 0
+                ? last5GamesB.reduce((sum, d) => sum + d[metricB], 0) /
+                  last5GamesB.length
+                : 0;
+
+            const expected5A = this.calculateExpected(playerDataA, metricA);
+            const expected5B = this.calculateExpected(playerDataB, metricB);
+
+            valueA =
+              expected5A > 0 ? ((l5AvgA - expected5A) / expected5A) * 100 : 0;
+            valueB =
+              expected5B > 0 ? ((l5AvgB - expected5B) / expected5B) * 100 : 0;
+            break;
+
+          case 'l10Diff':
+            const last10GamesA = sortedDataA.slice(0, 10);
+            const last10GamesB = sortedDataB.slice(0, 10);
+
+            const l10AvgA =
+              last10GamesA.length > 0
+                ? last10GamesA.reduce((sum, d) => sum + d[metricA], 0) /
+                  last10GamesA.length
+                : 0;
+
+            const l10AvgB =
+              last10GamesB.length > 0
+                ? last10GamesB.reduce((sum, d) => sum + d[metricB], 0) /
+                  last10GamesB.length
+                : 0;
+
+            const expected10A = this.calculateExpected(playerDataA, metricA);
+            const expected10B = this.calculateExpected(playerDataB, metricB);
+
+            valueA =
+              expected10A > 0
+                ? ((l10AvgA - expected10A) / expected10A) * 100
+                : 0;
+            valueB =
+              expected10B > 0
+                ? ((l10AvgB - expected10B) / expected10B) * 100
+                : 0;
+            break;
+
+          case 'currentYearDiff':
+            const currentYear = new Date().getFullYear();
+
+            const currentYearDataA = playerDataA.filter(
+              (d) => d.date.getFullYear() === currentYear
+            );
+
+            const currentYearDataB = playerDataB.filter(
+              (d) => d.date.getFullYear() === currentYear
+            );
+
+            // Calculate the current year average
+            const currentYearAvgA =
+              currentYearDataA.length > 0
+                ? currentYearDataA.reduce((sum, d) => sum + d[metricA], 0) /
+                  currentYearDataA.length
+                : 0;
+
+            const currentYearAvgB =
+              currentYearDataB.length > 0
+                ? currentYearDataB.reduce((sum, d) => sum + d[metricB], 0) /
+                  currentYearDataB.length
+                : 0;
+
+            const expectedYearA = this.calculateExpected(playerDataA, metricA);
+            const expectedYearB = this.calculateExpected(playerDataB, metricB);
+
+            // Calculate percentage difference between current year average and overall average
+            valueA =
+              expectedYearA > 0 && currentYearDataA.length > 0
+                ? ((currentYearAvgA - expectedYearA) / expectedYearA) * 100
+                : 0;
+
+            valueB =
+              expectedYearB > 0 && currentYearDataB.length > 0
+                ? ((currentYearAvgB - expectedYearB) / expectedYearB) * 100
+                : 0;
+            break;
+
+          case 'percentOver':
+            // For all-time, this should be 0 or very close to 0 since all data is from 2025
+            const allTimeAvgA = this.calculateExpected(playerDataA, metricA);
+            const allTimeAvgB = this.calculateExpected(playerDataB, metricB);
+
+            const expectedAllTimeA = this.calculateExpected(
+              playerDataA,
+              metricA
+            );
+            const expectedAllTimeB = this.calculateExpected(
+              playerDataB,
+              metricB
+            );
+
+            valueA =
+              expectedAllTimeA > 0
+                ? ((allTimeAvgA - expectedAllTimeA) / expectedAllTimeA) * 100
+                : 0;
+            valueB =
+              expectedAllTimeB > 0
+                ? ((allTimeAvgB - expectedAllTimeB) / expectedAllTimeB) * 100
+                : 0;
+            break;
+
+          case 'player':
+            valueA = a.player;
+            valueB = b.player;
+            break;
+
+          case 'team':
+            valueA = a.team || '';
+            valueB = b.team || '';
+            break;
+
+          case 'metric':
+            valueA = a.metric;
+            valueB = b.metric;
+            break;
+
+          default:
+            valueA = a[this.sortColumn] || 0;
+            valueB = b[this.sortColumn] || 0;
+        }
+      } else {
+        // Fallback if data is incomplete
+        valueA = a[this.sortColumn] || 0;
+        valueB = b[this.sortColumn] || 0;
       }
 
+      // Handle string comparison
       if (typeof valueA === 'string') {
         return this.sortDirection === 'asc'
           ? valueA.localeCompare(valueB)
           : valueB.localeCompare(valueA);
       }
 
+      // Handle numeric comparison
       return this.sortDirection === 'asc' ? valueA - valueB : valueB - valueA;
     });
+
+    console.log(`Sorted ${this.data.length} rows`);
   }
 
   // Set up event listeners for sortable column headers
   setupEventListeners() {
-    this.thead.selectAll('th.sortable').on('click', (event) => {
-      const headerElement = event.currentTarget;
-      const headerText = headerElement.textContent
-        .replace(/[↑↓]\s*$/, '')
-        .trim();
+    try {
+      // Set up sort listeners
+      this.table.selectAll('th.sortable').on('click', (event) => {
+        const column = event.currentTarget.getAttribute('data-column');
 
-      console.log(`Column clicked: "${headerText}"`);
-
-      const columnMap = {
-        Avg: 'average',
-        'L3 +/-': 'l3Diff',
-        'L5 +/-': 'l5Diff',
-        'L10 +/-': 'l10Diff',
-        [`${this.currentYear} %`]: 'currentYearDiff',
-        'All-Time %': 'percentOver',
-      };
-
-      let column = headerElement.getAttribute('data-column');
-
-      if (!column) {
-        column = columnMap[headerText];
-      }
-
-      console.log(`Mapped to property: ${column}`);
-
-      if (!column) {
-        console.error(`No mapping found for column: "${headerText}"`);
-        return;
-      }
-
-      console.log(
-        `Before click - sortColumn: ${this.sortColumn}, sortDirection: ${this.sortDirection}`
-      );
-
-      // Three-state sorting: descending -> ascending -> no sort
-      if (column === this.sortColumn) {
-        if (this.sortDirection === 'desc') {
-          this.sortDirection = 'asc';
-        } else if (this.sortDirection === 'asc') {
-          this.sortColumn = null;
-          this.sortDirection = null;
+        // If clicking the same column, toggle direction
+        if (column === this.sortColumn) {
+          this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+          // New column, set to appropriate default direction
+          this.sortColumn = column;
+          // Default to descending for numeric columns, ascending for text
+          this.sortDirection = column === 'player' ? 'asc' : 'desc';
         }
-      } else {
-        this.sortColumn = column;
 
-        this.sortDirection = 'desc';
-      }
+        this.updateSortIndicators(event.currentTarget);
+        this.renderTable();
+      });
 
-      console.log(
-        `After click - sortColumn: ${this.sortColumn}, sortDirection: ${this.sortDirection}`
+      // Set up player link listeners
+      this.setupPlayerLinkListeners();
+
+      // Add window resize event listener for metric slider
+      window.addEventListener('resize', () => {
+        // Debounce the resize event
+        if (this.resizeTimeout) {
+          clearTimeout(this.resizeTimeout);
+        }
+
+        this.resizeTimeout = setTimeout(() => {
+          const filterContainer = this.container
+            .select('.metric-filter-container')
+            .node();
+          if (filterContainer) {
+            this.positionMetricSlider(filterContainer);
+          }
+        }, 100);
+      });
+
+      console.log('Performance table event listeners set up successfully');
+    } catch (error) {
+      console.error(
+        'Error setting up performance table event listeners:',
+        error
       );
-
-      this.updateSortIndicators(headerElement);
-      this.renderTable();
-    });
+    }
   }
 
   // Update sort indicators (↑/↓) on column headers
@@ -576,29 +897,81 @@ class PerformanceTable {
 
   // Set up click event listeners for player links
   setupPlayerLinkListeners() {
-    this.table.selectAll('.player-link').on('click', (event) => {
-      event.preventDefault();
+    try {
+      // Use event delegation for player links
+      this.container.on('click', '.player-link', (event) => {
+        event.preventDefault();
+        const playerName = event.target.getAttribute('data-player');
+        const metric =
+          event.target.getAttribute('data-metric') || this.currentMetric;
 
-      const player = event.target.getAttribute('data-player');
-      const metric = event.target.getAttribute('data-metric');
+        if (!playerName) {
+          console.warn('Player link clicked but no player name found');
+          return;
+        }
 
-      const playerData = this.data.find(
-        (d) => d.player === player && d.metric === metric
-      );
-      if (!playerData || !playerData.rawData || playerData.rawData.length === 0)
-        return;
+        console.log(`Player link clicked: ${playerName}, metric: ${metric}`);
 
-      const sampleGame = playerData.rawData[0];
-      const league = sampleGame.league;
-      const team = sampleGame.teamname;
+        // Store selected values in localStorage
+        localStorage.setItem('selectedPlayer', playerName);
+        localStorage.setItem('selectedMetric', metric);
 
-      localStorage.setItem('selectedLeague', league);
-      localStorage.setItem('selectedTeam', team);
-      localStorage.setItem('selectedPlayer', player);
-      localStorage.setItem('selectedMetric', metric);
+        // Find player data to get league and team
+        DataLoader.loadPlayerData(playerName)
+          .then((playerData) => {
+            if (playerData && playerData.length > 0) {
+              // Get the most recent game to determine current team and league
+              const sortedData = [...playerData].sort(
+                (a, b) => b.date - a.date
+              );
+              const recentGame = sortedData[0];
 
-      window.location.href = 'index.html';
-    });
+              localStorage.setItem('selectedLeague', recentGame.league);
+              localStorage.setItem('selectedTeam', recentGame.teamname);
+
+              // Switch to player chart tab
+              const playerChartTab = document.querySelector(
+                '.tab[data-tab="player-chart"]'
+              );
+              if (playerChartTab) {
+                playerChartTab.click();
+              }
+
+              // Update the chart if chart manager is available
+              if (window.chartManagerInstance) {
+                // Give the DOM time to update
+                setTimeout(() => {
+                  window.chartManagerInstance.selectPlayer(
+                    playerName,
+                    recentGame.teamname,
+                    recentGame.league,
+                    metric
+                  );
+
+                  // Ensure stats are updated
+                  window.chartManagerInstance.updateStats(playerData);
+
+                  // Log confirmation
+                  console.log(
+                    `Updated chart and stats for ${playerName} with metric ${metric}`
+                  );
+                }, 200);
+              } else {
+                console.error('ChartManager instance not available');
+              }
+            } else {
+              console.error('Could not load player data for:', playerName);
+            }
+          })
+          .catch((error) => {
+            console.error('Error loading player data:', error);
+          });
+      });
+
+      console.log('Player link listeners set up successfully');
+    } catch (error) {
+      console.error('Error setting up player link listeners:', error);
+    }
   }
 
   // Select a player in the dropdowns on the player chart page

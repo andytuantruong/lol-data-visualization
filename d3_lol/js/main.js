@@ -1,14 +1,13 @@
+// Define ChartManager class
 class ChartManager {
   constructor() {
     this.chart = null;
     this.currentPlayer = null;
-    const metricDropdown = document.getElementById('metric-dropdown');
-    this.currentMetric = metricDropdown ? metricDropdown.value : 'kills';
+    this.currentMetric = 'kills';
+    this.metricDisplay = document.getElementById('metric-display');
 
-    const metricDisplay = document.getElementById('metric-display');
-    if (metricDropdown && metricDisplay) {
-      metricDisplay.textContent =
-        metricDropdown.options[metricDropdown.selectedIndex].text;
+    if (this.metricDisplay) {
+      this.metricDisplay.textContent = 'Kills';
     }
 
     this.filters = {
@@ -18,13 +17,8 @@ class ChartManager {
         apply: (data, value) =>
           data.filter((d) => d[this.currentMetric] >= value),
       },
-      // Adding filters example, modularity:
-      // maxDeaths: {
-      //   id: 'max-deaths',
-      //   getValue: (el) => parseInt(el.value) || 999,
-      //   apply: (data, value) => data.filter(d => d.deaths <= value)
-      // }
     };
+
     this.stats = {
       average: {
         id: 'average-metric',
@@ -43,408 +37,394 @@ class ChartManager {
         format: (value) => `${value}`,
       },
     };
+
     this.hierarchicalData = null;
-    this.performanceTable = null;
+    this.isInitialized = false;
   }
 
   async initialize() {
     try {
       console.log('Initializing ChartManager...');
+
+      // Create chart instance
       this.chart = new MetricsChart('#chart-container');
 
-      const performanceTableContainer = document.querySelector(
-        '#performance-table-container'
-      );
-      if (performanceTableContainer) {
-        this.performanceTable = new PerformanceTable(
-          '#performance-table-container'
-        );
+      // Load hierarchical data
+      console.log('Loading hierarchical data for chart...');
+      this.hierarchicalData = await DataLoader.loadHierarchicalData();
+      console.log('Hierarchical data loaded:', this.hierarchicalData);
+
+      // Set up UI components
+      this.populateLeagueDropdown();
+      this.setupHierarchicalFilters();
+      this.setupEventListeners();
+
+      // Check for saved selections
+      const savedLeague = localStorage.getItem('selectedLeague');
+      const savedTeam = localStorage.getItem('selectedTeam');
+      const savedPlayer = localStorage.getItem('selectedPlayer');
+      const savedMetric = localStorage.getItem('selectedMetric');
+
+      console.log('Saved selections:', {
+        savedLeague,
+        savedTeam,
+        savedPlayer,
+        savedMetric,
+      });
+
+      // Apply saved selections if available
+      if (savedLeague && savedTeam && savedPlayer) {
+        setTimeout(() => {
+          this.selectPlayer(
+            savedPlayer,
+            savedTeam,
+            savedLeague,
+            savedMetric || 'kills'
+          );
+        }, 100);
+      } else {
+        this.resetChart();
       }
 
-      const teamDropdown = document.getElementById('team-dropdown');
-      const playerDropdown = document.getElementById('player-dropdown');
-
-      if (teamDropdown) teamDropdown.disabled = true;
-      if (playerDropdown) playerDropdown.disabled = true;
-
-      const savedMetric = localStorage.getItem('selectedMetric') || 'kills';
-      const segments = document.querySelectorAll('.segment');
-      const slider = document.querySelector('.slider');
-
-      if (segments.length > 0 && slider) {
-        segments.forEach((segment, index) => {
-          if (segment.dataset.value === savedMetric) {
-            segments.forEach((s) => s.classList.remove('active'));
-            segment.classList.add('active');
-
-            slider.style.transition = 'none';
-            slider.style.transform = `translateX(${index * 100}%)`;
-
-            setTimeout(() => {
-              slider.style.transition = 'transform 0.3s ease';
-            }, 0);
-
-            this.currentMetric = savedMetric;
-            const metricDisplay = document.getElementById('metric-display');
-            if (metricDisplay) {
-              metricDisplay.textContent = segment.textContent;
-            }
-          }
-        });
-      }
-
-      console.log('Loading hierarchical data...');
-      try {
-        this.hierarchicalData = await DataLoader.loadHierarchicalData();
-        console.log('Hierarchical data loaded:', this.hierarchicalData);
-
-        this.populateLeagueDropdown();
-        this.setupHierarchicalFilters();
-        this.setupEventListeners();
-
-        const savedLeague = localStorage.getItem('selectedLeague');
-        const savedTeam = localStorage.getItem('selectedTeam');
-        const savedPlayer = localStorage.getItem('selectedPlayer');
-
-        console.log('Saved selections:', {
-          savedLeague,
-          savedTeam,
-          savedPlayer,
-        });
-
-        if (savedLeague && savedTeam && savedPlayer) {
-          const leagueDropdown = document.getElementById('league-dropdown');
-          if (leagueDropdown) {
-            console.log('Setting league dropdown to:', savedLeague);
-
-            let leagueExists = false;
-            for (let i = 0; i < leagueDropdown.options.length; i++) {
-              if (leagueDropdown.options[i].value === savedLeague) {
-                leagueExists = true;
-                break;
-              }
-            }
-
-            if (leagueExists) {
-              leagueDropdown.value = savedLeague;
-              leagueDropdown.dispatchEvent(new Event('change'));
-
-              setTimeout(() => {
-                if (teamDropdown) {
-                  console.log('Setting team dropdown to:', savedTeam);
-
-                  let teamExists = false;
-                  for (let i = 0; i < teamDropdown.options.length; i++) {
-                    if (teamDropdown.options[i].value === savedTeam) {
-                      teamExists = true;
-                      break;
-                    }
-                  }
-
-                  if (teamExists) {
-                    teamDropdown.value = savedTeam;
-                    teamDropdown.dispatchEvent(new Event('change'));
-                    setTimeout(() => {
-                      if (playerDropdown) {
-                        console.log('Setting player dropdown to:', savedPlayer);
-
-                        let playerExists = false;
-                        for (
-                          let i = 0;
-                          i < playerDropdown.options.length;
-                          i++
-                        ) {
-                          if (playerDropdown.options[i].value === savedPlayer) {
-                            playerExists = true;
-                            break;
-                          }
-                        }
-
-                        if (playerExists) {
-                          playerDropdown.value = savedPlayer;
-                          playerDropdown.dispatchEvent(new Event('change'));
-                        } else {
-                          console.warn(
-                            'Saved player not found in dropdown:',
-                            savedPlayer
-                          );
-                        }
-                      }
-                    }, 300);
-                  } else {
-                    console.warn(
-                      'Saved team not found in dropdown:',
-                      savedTeam
-                    );
-                  }
-                }
-              }, 300);
-            } else {
-              console.warn('Saved league not found in dropdown:', savedLeague);
-            }
-          }
-        } else {
-          this.resetChart();
-        }
-      } catch (dataError) {
-        console.error('Error loading data:', dataError);
-        document.getElementById('data-error').style.display = 'block';
-        document
-          .getElementById('data-error')
-          .querySelector(
-            'p'
-          ).textContent = `Error loading data: ${dataError.message}. Please check that your CSV file exists and is properly formatted.`;
-      }
-
-      if (this.performanceTable) {
-        try {
-          await this.performanceTable.initialize();
-        } catch (error) {
-          console.error('Error initializing performance table:', error);
-        }
-      }
-
+      // Add tab change listener to handle visibility changes
       const tabs = document.querySelectorAll('.tab');
-      if (tabs.length > 0) {
-        this.setupTabNavigation();
-      }
+      tabs.forEach((tab) => {
+        tab.addEventListener('click', () => {
+          const tabId = tab.getAttribute('data-tab');
+          if (tabId === 'player-chart' && this.chart && this.currentPlayer) {
+            // Give the DOM time to update visibility
+            setTimeout(() => {
+              if (this.chart.resize) {
+                this.chart.resize();
+              }
+              this.updateChart();
+            }, 100);
+          }
+        });
+      });
 
-      // Hide loading overlay when initialization completes
-      const loadingOverlay = document.getElementById('loading-overlay');
-      if (loadingOverlay) {
-        loadingOverlay.style.display = 'none';
-      }
-
+      this.isInitialized = true;
       console.log('ChartManager initialization complete');
+      return true;
     } catch (error) {
-      console.error('Error in initialize:', error);
+      console.error('Error in ChartManager initialize:', error);
 
-      // Ensure loading overlay is hidden even if an error occurs
-      const loadingOverlay = document.getElementById('loading-overlay');
-      if (loadingOverlay) {
-        loadingOverlay.style.display = 'none';
+      // Show error message
+      const dataError = document.getElementById('data-error');
+      if (dataError) {
+        dataError.style.display = 'block';
+        const errorMsg = dataError.querySelector('p');
+        if (errorMsg) {
+          errorMsg.textContent = `Error initializing chart: ${error.message}. Please check the console for more details.`;
+        }
       }
 
-      document.getElementById('data-error').style.display = 'block';
-      document
-        .getElementById('data-error')
-        .querySelector(
-          'p'
-        ).textContent = `Error initializing application: ${error.message}. Please check the console for more details.`;
+      throw error;
     }
   }
 
   populateLeagueDropdown() {
-    const leagueDropdown = document.getElementById('league-dropdown');
-    if (!leagueDropdown) return;
+    try {
+      const leagueDropdown = document.getElementById('league-dropdown');
+      if (!leagueDropdown) {
+        console.warn('League dropdown not found');
+        return;
+      }
 
-    // Clear existing options except the first one
-    while (leagueDropdown.options.length > 1) {
-      leagueDropdown.remove(1);
+      // Clear existing options except the first one
+      while (leagueDropdown.options.length > 1) {
+        leagueDropdown.remove(1);
+      }
+
+      // Add league options
+      if (this.hierarchicalData && this.hierarchicalData.leagues) {
+        this.hierarchicalData.leagues.forEach((league) => {
+          const option = document.createElement('option');
+          option.value = league;
+          option.textContent = league;
+          leagueDropdown.appendChild(option);
+        });
+
+        console.log(
+          'Populated league dropdown with options:',
+          this.hierarchicalData.leagues
+        );
+      } else {
+        console.warn('No leagues found in hierarchical data');
+      }
+    } catch (error) {
+      console.error('Error populating league dropdown:', error);
     }
-
-    this.hierarchicalData.leagues.forEach((league) => {
-      const option = document.createElement('option');
-      option.value = league;
-      option.textContent = league;
-      leagueDropdown.appendChild(option);
-    });
-
-    console.log(
-      'Populated league dropdown with options:',
-      this.hierarchicalData.leagues
-    );
   }
 
   updateTeamDropdown(league) {
-    const teamDropdown = document.getElementById('team-dropdown');
-    const playerDropdown = document.getElementById('player-dropdown');
+    try {
+      const teamDropdown = document.getElementById('team-dropdown');
+      const playerDropdown = document.getElementById('player-dropdown');
 
-    teamDropdown.innerHTML = '<option value="">Select Team...</option>';
-    playerDropdown.innerHTML = '<option value="">Select Player...</option>';
+      if (!teamDropdown || !playerDropdown) {
+        console.warn('Team or player dropdown not found');
+        return;
+      }
 
-    if (league) {
-      const teams = this.hierarchicalData.getTeams(league);
-      teams.forEach((team) => {
-        const option = document.createElement('option');
-        option.value = team;
-        option.textContent = team;
-        teamDropdown.appendChild(option);
-      });
-      teamDropdown.disabled = false;
-      playerDropdown.disabled = true;
-    } else {
-      teamDropdown.disabled = true;
-      playerDropdown.disabled = true;
+      // Reset team dropdown
+      teamDropdown.innerHTML = '<option value="">Select Team...</option>';
+      playerDropdown.innerHTML = '<option value="">Select Player...</option>';
+
+      if (league) {
+        // Get teams for selected league
+        const teams = this.hierarchicalData.getTeams(league);
+
+        if (teams && teams.length > 0) {
+          // Add team options
+          teams.forEach((team) => {
+            const option = document.createElement('option');
+            option.value = team;
+            option.textContent = team;
+            teamDropdown.appendChild(option);
+          });
+
+          // Enable/disable dropdowns
+          teamDropdown.disabled = false;
+          playerDropdown.disabled = true;
+
+          console.log(
+            `Populated team dropdown with ${teams.length} teams for league: ${league}`
+          );
+        } else {
+          console.warn(`No teams found for league: ${league}`);
+          teamDropdown.disabled = true;
+          playerDropdown.disabled = true;
+        }
+      } else {
+        // Disable both dropdowns if no league selected
+        teamDropdown.disabled = true;
+        playerDropdown.disabled = true;
+      }
+    } catch (error) {
+      console.error('Error updating team dropdown:', error);
     }
   }
 
   updatePlayerDropdown(league, team) {
-    const playerDropdown = document.getElementById('player-dropdown');
-    playerDropdown.innerHTML = '<option value="">Select Player...</option>';
+    try {
+      const playerDropdown = document.getElementById('player-dropdown');
+      if (!playerDropdown) {
+        console.warn('Player dropdown not found');
+        return;
+      }
 
-    if (league && team) {
-      const players = this.hierarchicalData.getPlayers(league, team);
-      players.forEach((player) => {
-        const option = document.createElement('option');
-        option.value = player;
-        option.textContent = player;
-        playerDropdown.appendChild(option);
-      });
-      playerDropdown.disabled = false;
-    } else {
-      playerDropdown.disabled = true;
+      // Reset player dropdown
+      playerDropdown.innerHTML = '<option value="">Select Player...</option>';
+
+      if (league && team) {
+        // Get players for selected team
+        const players = this.hierarchicalData.getPlayers(league, team);
+
+        if (players && players.length > 0) {
+          // Add player options
+          players.forEach((player) => {
+            const option = document.createElement('option');
+            option.value = player;
+            option.textContent = player;
+            playerDropdown.appendChild(option);
+          });
+
+          // Enable player dropdown
+          playerDropdown.disabled = false;
+
+          console.log(
+            `Populated player dropdown with ${players.length} players for team: ${team}`
+          );
+        } else {
+          console.warn(
+            `No players found for team: ${team} in league: ${league}`
+          );
+          playerDropdown.disabled = true;
+        }
+      } else {
+        // Disable player dropdown if no team selected
+        playerDropdown.disabled = true;
+      }
+    } catch (error) {
+      console.error('Error updating player dropdown:', error);
     }
   }
 
   setupHierarchicalFilters() {
-    const leagueDropdown = document.getElementById('league-dropdown');
-    const teamDropdown = document.getElementById('team-dropdown');
-    const playerDropdown = document.getElementById('player-dropdown');
+    try {
+      const leagueDropdown = document.getElementById('league-dropdown');
+      const teamDropdown = document.getElementById('team-dropdown');
+      const playerDropdown = document.getElementById('player-dropdown');
 
-    if (!leagueDropdown || !teamDropdown || !playerDropdown) return;
-
-    // League change event
-    leagueDropdown.addEventListener('change', () => {
-      const selectedLeague = leagueDropdown.value;
-      console.log('League selected:', selectedLeague);
-
-      // Clear player and team dropdowns
-      while (teamDropdown.options.length > 1) {
-        teamDropdown.remove(1);
-      }
-      while (playerDropdown.options.length > 1) {
-        playerDropdown.remove(1);
-      }
-
-      // Disable dropdowns if no league selected
-      if (!selectedLeague) {
-        teamDropdown.disabled = true;
-        playerDropdown.disabled = true;
+      if (!leagueDropdown || !teamDropdown || !playerDropdown) {
+        console.warn('One or more dropdowns not found');
         return;
       }
 
-      // Populate team dropdown
-      const teams = this.hierarchicalData.getTeams(selectedLeague);
-      teams.forEach((team) => {
-        const option = document.createElement('option');
-        option.value = team;
-        option.textContent = team;
-        teamDropdown.appendChild(option);
+      // Remove existing event listeners
+      const newLeagueDropdown = leagueDropdown.cloneNode(true);
+      leagueDropdown.parentNode.replaceChild(newLeagueDropdown, leagueDropdown);
+
+      const newTeamDropdown = teamDropdown.cloneNode(true);
+      teamDropdown.parentNode.replaceChild(newTeamDropdown, teamDropdown);
+
+      // League change event
+      newLeagueDropdown.addEventListener('change', () => {
+        const selectedLeague = newLeagueDropdown.value;
+        console.log('League selected:', selectedLeague);
+        this.updateTeamDropdown(selectedLeague);
       });
 
-      // Enable team dropdown
-      teamDropdown.disabled = false;
-      playerDropdown.disabled = true;
-
-      console.log('Populated team dropdown with options:', teams);
-    });
-
-    // Team change event
-    teamDropdown.addEventListener('change', () => {
-      const selectedLeague = leagueDropdown.value;
-      const selectedTeam = teamDropdown.value;
-      console.log('Team selected:', selectedTeam);
-
-      // Clear player dropdown
-      while (playerDropdown.options.length > 1) {
-        playerDropdown.remove(1);
-      }
-
-      if (!selectedTeam) {
-        playerDropdown.disabled = true;
-        return;
-      }
-
-      const players = this.hierarchicalData.getPlayers(
-        selectedLeague,
-        selectedTeam
-      );
-      players.forEach((player) => {
-        const option = document.createElement('option');
-        option.value = player;
-        option.textContent = player;
-        playerDropdown.appendChild(option);
+      // Team change event
+      newTeamDropdown.addEventListener('change', () => {
+        const selectedLeague = newLeagueDropdown.value;
+        const selectedTeam = newTeamDropdown.value;
+        console.log('Team selected:', selectedTeam);
+        this.updatePlayerDropdown(selectedLeague, selectedTeam);
       });
 
-      // Enable player dropdown
-      playerDropdown.disabled = false;
-
-      console.log('Populated player dropdown with options:', players);
-    });
+      console.log('Hierarchical filters set up successfully');
+    } catch (error) {
+      console.error('Error setting up hierarchical filters:', error);
+    }
   }
 
   setupEventListeners() {
-    document
-      .getElementById('player-dropdown')
-      .addEventListener('change', () => this.updateChart());
+    try {
+      console.log('Setting up chart event listeners...');
 
-    Object.keys(this.filters).forEach((filterKey) => {
-      const filter = this.filters[filterKey];
-      const element = document.getElementById(filter.id);
-      if (element) {
-        element.addEventListener('input', () => this.updateChart());
+      // Set up league dropdown change event
+      const leagueDropdown = document.getElementById('league-dropdown');
+      if (leagueDropdown) {
+        leagueDropdown.addEventListener('change', (event) => {
+          const league = event.target.value;
+          this.updateTeamDropdown(league);
+        });
       }
-    });
 
-    // Replace metric dropdown listener with segmented control
-    const segmentedControl = document.querySelector('.segmented-control');
-    const slider = segmentedControl.querySelector('.slider');
-    const segments = segmentedControl.querySelectorAll('.segment');
+      // Set up team dropdown change event
+      const teamDropdown = document.getElementById('team-dropdown');
+      if (teamDropdown) {
+        teamDropdown.addEventListener('change', (event) => {
+          const league = leagueDropdown ? leagueDropdown.value : '';
+          const team = event.target.value;
+          this.updatePlayerDropdown(league, team);
+        });
+      }
 
-    segments.forEach((segment, index) => {
-      segment.addEventListener('click', () => {
-        segments.forEach((s) => s.classList.remove('active'));
-        segment.classList.add('active');
-        // Move slider
-        slider.style.transform = `translateX(${index * 100}%)`;
-        this.currentMetric = segment.dataset.value; // Update metric
-        document.getElementById('metric-display').textContent =
-          segment.textContent;
-        localStorage.setItem('selectedMetric', this.currentMetric);
+      // Set up player dropdown change event
+      const playerDropdown = document.getElementById('player-dropdown');
+      if (playerDropdown) {
+        playerDropdown.addEventListener('change', (event) => {
+          const playerName = event.target.value;
+          if (playerName) {
+            const league = leagueDropdown ? leagueDropdown.value : '';
+            const team = teamDropdown ? teamDropdown.value : '';
+            this.selectPlayer(playerName, team, league, this.currentMetric);
+          }
+        });
+      }
 
-        // Check if a player is selected before updating the chart
-        const playerName = document.getElementById('player-dropdown').value;
-        if (playerName) {
+      // Set up metric segmented control
+      const segments = document.querySelectorAll('.segmented-control .segment');
+      if (segments.length > 0) {
+        // Initialize slider position on page load
+        this.positionSlider();
+
+        segments.forEach((segment) => {
+          segment.addEventListener('click', (event) => {
+            // Remove active class from all segments
+            segments.forEach((s) => s.classList.remove('active'));
+
+            event.target.classList.add('active');
+            this.positionSlider();
+            const metric = event.target.getAttribute('data-value');
+            this.currentMetric = metric;
+            const metricDisplay = document.getElementById('metric-display');
+            if (metricDisplay) {
+              metricDisplay.textContent = this.formatMetric(metric);
+            }
+
+            this.updateChart();
+          });
+        });
+      }
+
+      // Set up min metric input
+      const minMetricInput = document.getElementById('min-metric');
+      if (minMetricInput) {
+        minMetricInput.addEventListener('change', () => {
           this.updateChart();
-        } else {
-          // If no player is selected, just reset the chart
-          this.resetChart();
-        }
+        });
+      }
+
+      // Add window resize event to reposition slider
+      window.addEventListener('resize', () => {
+        this.positionSlider();
       });
-    });
+
+      console.log('Chart event listeners set up successfully');
+    } catch (error) {
+      console.error('Error setting up chart event listeners:', error);
+    }
   }
 
-  setupTabNavigation() {
-    const tabs = document.querySelectorAll('.tab');
-    const tabContents = document.querySelectorAll('.tab-content');
+  // Helper method to position the slider correctly
+  positionSlider() {
+    try {
+      // Find the active segment and slider in the current page context
+      const activeSegment = document.querySelector(
+        '.segmented-control .segment.active'
+      );
+      const slider = document.querySelector('.segmented-control .slider');
 
-    tabs.forEach((tab) => {
-      tab.addEventListener('click', () => {
-        // Remove active class from all tabs and contents
-        tabs.forEach((t) => t.classList.remove('active'));
-        tabContents.forEach((c) => c.classList.remove('active'));
+      if (activeSegment && slider) {
+        // Get the position and dimensions of the active segment
+        const rect = activeSegment.getBoundingClientRect();
+        const parentRect = activeSegment.parentElement.getBoundingClientRect();
 
-        // Add active class to clicked tab and corresponding content
-        tab.classList.add('active');
-        const tabId = tab.getAttribute('data-tab');
-        document.getElementById(tabId).classList.add('active');
-      });
-    });
+        // Calculate the left position relative to the parent
+        const leftPosition = rect.left - parentRect.left;
+
+        // Set the slider position and width
+        slider.style.width = rect.width + 'px';
+        slider.style.left = leftPosition + 'px';
+
+        console.log('Slider positioned successfully');
+      }
+    } catch (error) {
+      console.error('Error positioning slider:', error);
+    }
+  }
+
+  formatMetric(metric) {
+    return metric.charAt(0).toUpperCase() + metric.slice(1);
   }
 
   async updateChart() {
     try {
-      const playerName = document.getElementById('player-dropdown').value;
+      const playerDropdown = document.getElementById('player-dropdown');
+      if (!playerDropdown) {
+        console.warn('Player dropdown not found');
+        return;
+      }
+
+      const playerName = playerDropdown.value || this.currentPlayer;
       if (!playerName) {
         this.resetChart();
         return;
       }
 
-      document.getElementById('player-name').textContent = playerName;
+      // Update player name display
+      const playerNameElement = document.getElementById('player-name');
+      if (playerNameElement) {
+        playerNameElement.textContent = playerName;
+      }
 
-      // Load and process data
+      console.log(`Loading data for player: ${playerName}`);
       let data = await DataLoader.loadPlayerData(playerName);
+
       if (!data || data.length === 0) {
         console.error('No data loaded for player:', playerName);
         this.resetChart();
@@ -453,8 +433,28 @@ class ChartManager {
 
       data = this.applyFilters(data);
       this.updateStats(data);
-      data.sort((a, b) => a.date - b.date); // Sort by date
-      this.chart.update(data, playerName, this.currentMetric);
+
+      // Sort data by date
+      data.sort((a, b) => a.date - b.date);
+
+      // Update chart
+      if (this.chart) {
+        // Check if player chart tab is active
+        const playerChartTab = document.getElementById('player-chart');
+
+        if (playerChartTab && playerChartTab.classList.contains('active')) {
+          this.chart.update(data, playerName, this.currentMetric);
+        } else {
+          console.log('Player chart tab not active, storing data for later');
+          // Store data for when tab becomes active
+          this.chart.currentData = data;
+          this.chart.currentPlayerName = playerName;
+          this.chart.currentMetric = this.currentMetric;
+        }
+      }
+
+      // Store current player
+      this.currentPlayer = playerName;
     } catch (error) {
       console.error('Error in updateChart:', error);
       this.resetChart();
@@ -473,28 +473,221 @@ class ChartManager {
   }
 
   updateStats(data) {
-    Object.values(this.stats).forEach((stat) => {
-      const element = document.getElementById(stat.id);
-      if (element) {
-        const value = stat.calculate(data);
-        element.textContent = stat.format(value);
+    try {
+      if (!data || data.length === 0) {
+        console.warn('No data available to update stats');
+        return;
       }
-    });
+
+      const metric = this.currentMetric;
+      if (!metric) {
+        console.warn('No metric selected for stats calculation');
+        return;
+      }
+
+      // Calculate average
+      const sum = data.reduce((acc, d) => acc + d[metric], 0);
+      const avg = sum / data.length;
+
+      // Calculate median
+      const sortedValues = [...data]
+        .map((d) => d[metric])
+        .sort((a, b) => a - b);
+      let median;
+      const mid = Math.floor(sortedValues.length / 2);
+      if (sortedValues.length % 2 === 0) {
+        median = (sortedValues[mid - 1] + sortedValues[mid]) / 2;
+      } else {
+        median = sortedValues[mid];
+      }
+
+      console.log(
+        `Stats for ${metric}: Average = ${avg.toFixed(
+          2
+        )}, Median = ${median.toFixed(2)}`
+      );
+
+      // Update stats in the UI - handle performance.html
+      const avgMetricElement = document.getElementById('average-metric');
+      const medianMetricElement = document.getElementById('median-metric');
+      const avgValueElement = document.getElementById('avg-value');
+      const medianValueElement = document.getElementById('median-value');
+
+      // Update the elements if they exist
+      if (avgMetricElement) {
+        avgMetricElement.textContent = avg.toFixed(2);
+      }
+
+      if (medianMetricElement) {
+        medianMetricElement.textContent = median.toFixed(2);
+      }
+
+      if (avgValueElement) {
+        avgValueElement.textContent = avg.toFixed(2);
+      }
+
+      if (medianValueElement) {
+        medianValueElement.textContent = median.toFixed(2);
+      }
+
+      // Update metric display if it exists
+      const metricDisplay = document.getElementById('metric-display');
+      if (metricDisplay) {
+        metricDisplay.textContent = this.formatMetric(metric);
+      }
+    } catch (error) {
+      console.error('Error updating stats:', error);
+    }
   }
 
   resetChart() {
-    document.getElementById('player-name').textContent = 'Select Player';
-    document.getElementById('average-metric').textContent = '--';
-    document.getElementById('median-metric').textContent = '--';
+    const playerNameElement = document.getElementById('player-name');
+    if (playerNameElement) {
+      playerNameElement.textContent = 'Select Player';
+    }
+
+    const averageMetric = document.getElementById('average-metric');
+    if (averageMetric) {
+      averageMetric.textContent = '--';
+    }
+
+    const medianMetric = document.getElementById('median-metric');
+    if (medianMetric) {
+      medianMetric.textContent = '--';
+    }
+
     if (this.chart) {
       this.chart.clear();
     }
+
+    this.currentPlayer = null;
+  }
+
+  /**
+   * Selects a player in the dropdowns and updates the chart
+   * @param {string} playerName - The player name
+   * @param {string} team - The team name
+   * @param {string} league - The league name
+   * @param {string} metric - The metric to display
+   */
+  selectPlayer(playerName, team, league, metric = 'kills') {
+    if (!this.hierarchicalData) {
+      console.error('Hierarchical data not loaded yet');
+      return;
+    }
+
+    console.log(
+      `Selecting player: ${playerName}, team: ${team}, league: ${league}, metric: ${metric}`
+    );
+
+    try {
+      // Set league
+      const leagueDropdown = document.getElementById('league-dropdown');
+      if (leagueDropdown) {
+        // Check if league exists in dropdown
+        let leagueExists = false;
+        for (let i = 0; i < leagueDropdown.options.length; i++) {
+          if (leagueDropdown.options[i].value === league) {
+            leagueExists = true;
+            break;
+          }
+        }
+
+        if (leagueExists) {
+          leagueDropdown.value = league;
+
+          // Update team dropdown
+          this.updateTeamDropdown(league);
+
+          // Set team
+          const teamDropdown = document.getElementById('team-dropdown');
+          if (teamDropdown) {
+            // Check if team exists in dropdown
+            let teamExists = false;
+            for (let i = 0; i < teamDropdown.options.length; i++) {
+              if (teamDropdown.options[i].value === team) {
+                teamExists = true;
+                break;
+              }
+            }
+
+            if (teamExists) {
+              teamDropdown.value = team;
+
+              // Update player dropdown
+              this.updatePlayerDropdown(league, team);
+
+              // Set player
+              const playerDropdown = document.getElementById('player-dropdown');
+              if (playerDropdown) {
+                // Check if player exists in dropdown
+                let playerExists = false;
+                for (let i = 0; i < playerDropdown.options.length; i++) {
+                  if (playerDropdown.options[i].value === playerName) {
+                    playerExists = true;
+                    break;
+                  }
+                }
+
+                if (playerExists) {
+                  playerDropdown.value = playerName;
+                  this.currentPlayer = playerName;
+
+                  // Set metric
+                  const segments = document.querySelectorAll(
+                    '.segmented-control .segment'
+                  );
+                  const slider = document.querySelector(
+                    '.segmented-control .slider'
+                  );
+
+                  segments.forEach((segment, index) => {
+                    if (segment.dataset.value === metric) {
+                      segments.forEach((s) => s.classList.remove('active'));
+                      segment.classList.add('active');
+
+                      if (slider) {
+                        slider.style.transform = `translateX(${index * 100}%)`;
+                      }
+
+                      this.currentMetric = metric;
+
+                      if (this.metricDisplay) {
+                        this.metricDisplay.textContent = segment.textContent;
+                      }
+
+                      localStorage.setItem('selectedMetric', metric);
+                    }
+                  });
+
+                  // Update chart
+                  setTimeout(() => {
+                    this.updateChart();
+                  }, 100);
+                } else {
+                  console.warn('Player not found in dropdown:', playerName);
+                }
+              }
+            } else {
+              console.warn('Team not found in dropdown:', team);
+            }
+          }
+        } else {
+          console.warn('League not found in dropdown:', league);
+        }
+      }
+    } catch (error) {
+      console.error('Error in selectPlayer:', error);
+    }
   }
 }
+window.ChartManager = ChartManager;
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-  const manager = new ChartManager();
-  window.chartManagerInstance = manager;
-  manager.initialize();
+  console.log('DOM loaded, initializing ChartManager...');
+
+  console.log(
+    'On performance.html, ChartManager will be initialized by tabInitializer.js'
+  );
 });

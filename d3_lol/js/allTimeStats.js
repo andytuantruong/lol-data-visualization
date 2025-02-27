@@ -246,54 +246,98 @@ class AllTimeStats {
   }
 
   setupEventListeners() {
-    const yearFilter = document.getElementById('all-time-year-filter');
-    if (yearFilter) {
-      yearFilter.addEventListener('change', (event) => {
-        this.yearFilter = event.target.value;
+    try {
+      const yearFilter = document.getElementById('all-time-year-filter');
+      if (yearFilter) {
+        // Remove any existing event listeners
+        const newYearFilter = yearFilter.cloneNode(true);
+        yearFilter.parentNode.replaceChild(newYearFilter, yearFilter);
+
+        // Add new event listener
+        newYearFilter.addEventListener('change', (event) => {
+          this.yearFilter = event.target.value;
+          this.renderTable();
+        });
+      }
+
+      // Sort column headers - remove existing listeners first
+      this.table.selectAll('th.sortable').on('click', null);
+
+      // Add new sort listeners
+      this.table.selectAll('th.sortable').on('click', (event) => {
+        const column = event.currentTarget.getAttribute('data-column');
+
+        // If clicking the same column, toggle direction
+        if (column === this.sortColumn) {
+          this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+          // New column, set to appropriate default direction
+          this.sortColumn = column;
+          // Default to descending for numeric columns, ascending for text
+          this.sortDirection = column === 'player' ? 'asc' : 'desc';
+        }
+
+        this.updateSortIndicators();
         this.renderTable();
       });
-    }
 
-    // Sort column headers
-    this.table.selectAll('th.sortable').on('click', (event) => {
-      const column = event.currentTarget.getAttribute('data-column');
+      // Player link clicks - remove existing listeners first
+      this.table.on('click', '.player-link', null);
 
-      // If clicking the same column, toggle direction
-      if (column === this.sortColumn) {
-        this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
-      } else {
-        // New column, set to appropriate default direction
-        this.sortColumn = column;
-        // Default to descending for numeric columns, ascending for text
-        this.sortDirection = column === 'player' ? 'asc' : 'desc';
-      }
+      // Add new player link listeners
+      this.table.on('click', '.player-link', (event) => {
+        event.preventDefault();
 
-      this.updateSortIndicators();
-      this.renderTable();
-    });
+        const playerName = event.target.getAttribute('data-player');
+        if (!playerName) {
+          console.warn('Player link clicked but no player attribute found');
+          return;
+        }
 
-    // Player link clicks
-    this.table.on('click', '.player-link', (event) => {
-      event.preventDefault();
-
-      const playerName = event.target.getAttribute('data-player');
-      const playerData = this.data.find((d) => d.player === playerName);
-
-      if (playerData && playerData.rawData && playerData.rawData.length > 0) {
-        const sampleGame = playerData.rawData[0];
-        const league = sampleGame.league;
-        const team = sampleGame.teamname;
+        console.log(`All-time stats player link clicked: ${playerName}`);
 
         // Store selected values in localStorage
-        localStorage.setItem('selectedLeague', league);
-        localStorage.setItem('selectedTeam', team);
         localStorage.setItem('selectedPlayer', playerName);
-        localStorage.setItem('selectedMetric', 'kills');
+        localStorage.setItem('selectedMetric', 'kills'); // Default to kills for all-time stats
 
-        // Navigate to player chart page
-        window.location.href = 'index.html';
-      }
-    });
+        // Find player data to get league and team
+        DataLoader.loadPlayerData(playerName)
+          .then((playerData) => {
+            if (playerData && playerData.length > 0) {
+              const sampleGame = playerData[0];
+              localStorage.setItem('selectedLeague', sampleGame.league);
+              localStorage.setItem('selectedTeam', sampleGame.teamname);
+
+              // Switch to player chart tab
+              const playerChartTab = document.querySelector(
+                '.tab[data-tab="player-chart"]'
+              );
+              if (playerChartTab) {
+                playerChartTab.click();
+              }
+
+              // Update the chart if chart manager is available
+              if (window.chartManagerInstance) {
+                window.chartManagerInstance.selectPlayer(
+                  playerName,
+                  sampleGame.teamname,
+                  sampleGame.league,
+                  'kills'
+                );
+              }
+            } else {
+              console.error('Could not load player data for:', playerName);
+            }
+          })
+          .catch((error) => {
+            console.error('Error loading player data:', error);
+          });
+      });
+
+      console.log('All-time stats event listeners set up successfully');
+    } catch (error) {
+      console.error('Error setting up all-time stats event listeners:', error);
+    }
   }
 
   updateSortIndicators() {
