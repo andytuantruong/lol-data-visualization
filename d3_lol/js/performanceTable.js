@@ -13,7 +13,8 @@ class PerformanceTable {
 
     // Pagination properties
     this.currentPage = 1;
-    this.pageSize = 20;
+    const savedPageSize = localStorage.getItem('performanceTablePageSize');
+    this.pageSize = savedPageSize ? parseInt(savedPageSize) : 10;
     this.totalPages = 1;
   }
 
@@ -1021,6 +1022,7 @@ class PerformanceTable {
     // Page size selector
     this.container.select('.page-size-select').on('change', (event) => {
       this.pageSize = parseInt(event.target.value);
+      localStorage.setItem('performanceTablePageSize', this.pageSize);
       this.currentPage = 1; // Reset to first page when changing page size
       this.renderTable();
     });
