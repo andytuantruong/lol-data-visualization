@@ -435,9 +435,10 @@ input[type='number'].filter-select {
   top: 0;
   background-color: #242424;
   z-index: 10;
-  white-space: nowrap;
+  white-space: normal;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.2;
 }
 
 /* Column widths */
@@ -446,24 +447,27 @@ input[type='number'].filter-select {
   text-align: left;
 } /* Player */
 .performance-table th:nth-child(2) {
-  width: 12%;
+  width: 10%;
   text-align: left;
 } /* Team */
 .performance-table th:nth-child(3) {
-  width: 10%;
+  width: 8%;
 } /* Metric */
 .performance-table th:nth-child(4) {
-  width: 7%;
+  width: 6%;
 } /* Avg */
-.performance-table th:nth-child(5),
+.performance-table th:nth-child(5) {
+  width: 6%;
+} /* Prop */
 .performance-table th:nth-child(6),
 .performance-table th:nth-child(7),
 .performance-table th:nth-child(8),
-.performance-table th:nth-child(9),
-.performance-table th:nth-child(10) {
+.performance-table th:nth-child(9) {
   width: 8%;
-} /* Percentage columns */
-
+} /* L3, L5, L10, Current Year */
+.performance-table th:nth-child(10) {
+  width: 9%;
+} /* All-Time - give it more space */
 .performance-table td {
   padding: 10px 8px;
   border-bottom: 1px solid #333;
@@ -473,7 +477,6 @@ input[type='number'].filter-select {
   text-overflow: ellipsis;
 }
 
-/* Align text columns to the left */
 .performance-table td:nth-child(1),
 .performance-table td:nth-child(2) {
   text-align: left;
@@ -492,26 +495,6 @@ input[type='number'].filter-select {
   text-align: center;
 }
 
-.player-link {
-  color: #4caf50;
-  text-decoration: none;
-  font-weight: 600;
-  transition: color 0.2s;
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.player-link:hover {
-  color: #81c784;
-  text-decoration: underline;
-}
-
-.metric-name {
-  color: #ccc;
-  font-weight: 500;
-}
-
 .performance-table .sortable {
   cursor: pointer;
   position: relative;
@@ -528,17 +511,6 @@ input[type='number'].filter-select {
   font-size: 12px;
 }
 
-.performance-table .over-performance {
-  color: #4caf50;
-  font-weight: 600;
-}
-
-.performance-table .under-performance {
-  color: #ff5252;
-  font-weight: 600;
-}
-
-/* Updated styles for percentage columns */
 .performance-table .l3-percentage,
 .performance-table .l5-percentage,
 .performance-table .l10-percentage,
@@ -546,55 +518,60 @@ input[type='number'].filter-select {
 .performance-table .current-year-percentage,
 .performance-table .all-time-percentage {
   text-align: center;
-  font-weight: 600;
-  transition: background-color 0.2s;
+  font-weight: normal;
+  transition: none;
+  background-color: transparent;
+  color: inherit;
 }
 
-/* Highlight cells with positive percentages */
-.performance-table td.over-performance {
-  background-color: rgba(76, 175, 80, 0.1);
+@media (min-width: 1400px) {
+  /* Styles for large screens/fullscreen mode */
+  .performance-table {
+    font-size: 14px;
+  }
+
+  .performance-table th {
+    padding: 12px 10px;
+  }
+
+  /* Adjust column widths for larger screens */
+  .performance-table th:nth-child(1) {
+    width: 14%;
+  }
+  .performance-table th:nth-child(2) {
+    width: 9%;
+  }
+  .performance-table th:nth-child(3) {
+    width: 7%;
+  }
+  .performance-table th:nth-child(4),
+  .performance-table th:nth-child(5) {
+    width: 6%;
+  }
+  .performance-table th:nth-child(6),
+  .performance-table th:nth-child(7),
+  .performance-table th:nth-child(8),
+  .performance-table th:nth-child(9) {
+    width: 8%;
+  }
+  .performance-table th:nth-child(10) {
+    width: 8%;
+  }
 }
 
-/* Highlight cells with negative percentages */
+.performance-table td.over-performance,
 .performance-table td.under-performance {
-  background-color: rgba(255, 82, 82, 0.1);
+  background-color: transparent;
 }
 
 /* Current Year and All-Time Percentage Columns */
 .performance-table .current-year-percentage,
 .performance-table .all-time-percentage {
   text-align: center;
-  font-weight: 600;
+  font-weight: normal;
 }
 
-.performance-table .current-year-percentage.over-performance {
-  color: #4caf50;
-  background-color: rgba(76, 175, 80, 0.1);
-}
-
-.performance-table .current-year-percentage.under-performance {
-  color: #ff5252;
-  background-color: rgba(255, 82, 82, 0.1);
-}
-
-.performance-table .all-time-percentage {
-  color: #ffb74d;
-  background-color: rgba(255, 183, 77, 0.05);
-}
-
-/* Highlight header for current year */
-.performance-table th:nth-last-child(2) {
-  color: #4caf50;
-  font-weight: 600;
-}
-
-/* Highlight header for all-time */
-.performance-table th:last-child {
-  color: #ffb74d;
-  font-weight: 600;
-}
-
-/* Responsive styles for the expanded table */
+/* Responsive styles for the performance table */
 @media (max-width: 1200px) {
   .performance-table {
     font-size: 13px;
@@ -647,9 +624,36 @@ input[type='number'].filter-select {
   }
 }
 
-/* Enhanced hover effect for rows */
+/* Row highlight effect */
 .performance-table .data-row:hover {
   background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Prop value styling */
+.prop-value {
+  font-weight: 500;
+  text-align: center;
+}
+
+/* Player link styling */
+.player-link {
+  color: #4caf50;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.player-link:hover {
+  color: #81c784;
+  text-decoration: underline;
+}
+
+.metric-name {
+  color: #ccc;
+  font-weight: 500;
 }
 
 /* Tab content transitions */

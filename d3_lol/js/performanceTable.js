@@ -10,6 +10,7 @@ class PerformanceTable {
     this.charts = {};
     this.metricFilter = 'all';
     this.currentYear = new Date().getFullYear();
+    this.propValues = new Map(); //Prop values from player_prop_lines.csv
 
     // Pagination properties
     this.currentPage = 1;
@@ -22,6 +23,9 @@ class PerformanceTable {
   async initialize() {
     try {
       console.log('Initializing Performance Table...');
+
+      // Load prop values from CSV
+      await this.loadPropValues();
 
       this.createTableStructure();
       this.addMetricFilter();
@@ -55,7 +59,7 @@ class PerformanceTable {
       const totalPlayers = allPlayers.length;
       const updateInterval = Math.max(1, Math.floor(totalPlayers / 10));
 
-      allPlayers.forEach((player) => {
+      for (const player of allPlayers) {
         try {
           const playerData = allPlayersData.get(player);
 
@@ -70,30 +74,16 @@ class PerformanceTable {
                 rawData: playerData,
               };
 
-              entry.avg = this.calculateExpected(playerData, metric);
-              entry.l3 = this.calculateLastN(playerData, metric, 3);
-              entry.l5 = this.calculateLastN(playerData, metric, 5);
-              entry.l10 = this.calculateLastN(playerData, metric, 10);
+              // Calculate average for this metric
+              entry.avg = this.calculateAverage(playerData, metric);
 
-              // Get current year data
-              const currentYearData = playerData.filter(
-                (d) => d.date.getFullYear() === this.currentYear
-              );
-
-              entry.currentYearDiff =
-                currentYearData.length > 0
-                  ? this.calculatePeriodDiff(
-                      currentYearData,
-                      playerData,
-                      metric
-                    )
-                  : 0;
-
-              entry.percentOver = this.calculatePeriodDiff(
-                playerData,
-                playerData,
-                metric
-              );
+              // Get prop value if available
+              const propKey = `${player.toLowerCase()}_${metric}`;
+              if (this.propValues.has(propKey)) {
+                entry.propValue = this.propValues.get(propKey);
+              } else {
+                entry.propValue = null;
+              }
 
               this.data.push(entry);
             }
@@ -121,15 +111,21 @@ class PerformanceTable {
         } catch (error) {
           console.error(`Error processing player ${player}:`, error);
         }
-      });
+      }
 
       this.originalData = [...this.data];
 
       console.log(
         `Completed processing ${processedCount} players with ${this.data.length} metric entries`
       );
-      this.renderTable();
 
+      // Make sure we have data to display
+      if (this.data.length === 0) {
+        console.error('No player data was processed successfully');
+        throw new Error('Failed to process player data');
+      }
+
+      this.renderTable();
       this.setupEventListeners();
       this.setupPlayerLinkListeners();
 
@@ -141,7 +137,88 @@ class PerformanceTable {
       console.log('Performance Table initialization complete');
     } catch (error) {
       console.error('Error initializing performance table:', error);
+      this.container.html(`
+        <div class="error-message">
+          <h3>Error Loading Players</h3>
+          <p>${error.message}</p>
+          <p>Please check the console for more details.</p>
+        </div>
+      `);
       throw error;
+    }
+  }
+
+  // Load prop values from player_kill_lines.csv
+  async loadPropValues() {
+    try {
+      console.log('Loading prop values from CSV...');
+
+      // Try multiple possible paths for the CSV file for scaling purposes
+      const possiblePaths = [
+        'scripts/player_kill_lines.csv',
+        'd3_lol/scripts/player_kill_lines.csv',
+        '../scripts/player_kill_lines.csv',
+      ];
+
+      let csvText = null;
+      let loadedPath = null;
+
+      // Try each path until one works
+      for (const path of possiblePaths) {
+        try {
+          console.log(`Attempting to load prop values from: ${path}`);
+          const response = await fetch(path);
+
+          if (response.ok) {
+            csvText = await response.text();
+            loadedPath = path;
+            console.log(`Successfully loaded prop values from: ${path}`);
+            break;
+          }
+        } catch (e) {
+          console.warn(`Failed to load from ${path}: ${e.message}`);
+        }
+      }
+
+      if (!csvText) {
+        console.warn('Failed to load prop values CSV from any path');
+        return;
+      }
+
+      // Parse the CSV data
+      const propData = d3.csvParse(csvText);
+      console.log(
+        `Loaded ${propData.length} prop value entries from ${loadedPath}`
+      );
+
+      // Store prop values in a map for quick lookup
+      propData.forEach((row) => {
+        if (!row.player_name || !row.stat_type || !row.prop_value) {
+          console.warn('Skipping invalid prop value row:', row);
+          return;
+        }
+
+        const playerName = row.player_name.toLowerCase();
+        const statType = row.stat_type.toLowerCase();
+        const propValue = parseFloat(row.prop_value);
+
+        if (!isNaN(propValue)) {
+          const key = `${playerName}_${statType}`;
+          this.propValues.set(key, propValue);
+          console.log(
+            `Loaded prop value for ${playerName} (${statType}): ${propValue}`
+          );
+        } else {
+          console.warn(
+            `Invalid prop value for ${row.player_name} (${row.stat_type}): ${row.prop_value}`
+          );
+        }
+      });
+
+      console.log(`Successfully loaded ${this.propValues.size} prop values`);
+    } catch (error) {
+      console.error('Error loading prop values:', error);
+      // Continue without prop values rather than failing completely
     }
   }
 
@@ -242,31 +319,43 @@ class PerformanceTable {
     headerRow
       .append('th')
       .text('Avg')
+      .attr('title', 'Average value across all games')
       .classed('sortable', true)
       .attr('data-column', 'average');
     headerRow
       .append('th')
+      .text('Prop')
+      .attr('title', 'Prop value from player_kill_lines.csv')
+      .classed('sortable', true)
+      .attr('data-column', 'propValue');
+    headerRow
+      .append('th')
       .text('L3 +/-')
+      .attr('title', 'Performance compared to Prop in Last 3 Games')
       .classed('sortable', true)
       .attr('data-column', 'l3Diff');
     headerRow
       .append('th')
       .text('L5 +/-')
+      .attr('title', 'Performance compared to Prop in Last 5 Games')
       .classed('sortable', true)
       .attr('data-column', 'l5Diff');
     headerRow
       .append('th')
       .text('L10 +/-')
+      .attr('title', 'Performance compared to Prop in Last 10 Games')
       .classed('sortable', true)
       .attr('data-column', 'l10Diff');
     headerRow
       .append('th')
-      .text(`${this.currentYear} +/-`)
+      .text(`${this.currentYear}`)
+      .attr('title', `Performance difference in ${this.currentYear}`)
       .classed('sortable', true)
       .attr('data-column', 'currentYearDiff');
     headerRow
       .append('th')
-      .text('All-Time +/-')
+      .text('All-Time')
+      .attr('title', 'All-time performance difference')
       .classed('sortable', true)
       .attr('data-column', 'percentOver');
   }
@@ -433,268 +522,214 @@ class PerformanceTable {
   }
 
   // Calculate the average value for a metric
-  calculateExpected(data, metric) {
-    if (!data || data.length === 0) return 0;
-    return parseFloat(
-      (data.reduce((sum, d) => sum + d[metric], 0) / data.length).toFixed(2)
-    );
-  }
-
-  // Calculate percentage of games where player exceeds their average
-  calculatePercentOver(data, metric) {
+  calculateAverage(data, metric) {
     if (!data || data.length === 0) return 0;
 
-    const avg = this.calculateExpected(data, metric);
-    const gamesOver = data.filter((d) => d[metric] > avg).length;
-
-    return parseFloat(((gamesOver / data.length) * 100).toFixed(1));
+    // Sum all values for the given metric
+    const sum = data.reduce((total, match) => total + match[metric], 0);
+    const average = sum / data.length;
+    // Return the average rounded to 2 decimal places
+    return parseFloat(average.toFixed(2));
   }
 
-  // Calculate average for the last N games
-  calculateLastN(data, metric, n) {
-    if (!data || data.length === 0) return 0;
+  // Calculate percentage of games over prop line for the last N games
+  calculateLastNGamesOverProp(playerData, metric, propValue, n) {
+    if (!playerData || playerData.length === 0 || propValue === null) {
+      return { text: '-', value: null };
+    }
 
-    const sortedData = [...data].sort((a, b) => b.date - a.date);
-    const lastN = sortedData.slice(0, Math.min(n, sortedData.length));
+    // Sort data by date (most recent first)
+    const sortedData = [...playerData].sort((a, b) => b.date - a.date);
 
-    const lastNAverage =
-      lastN.reduce((sum, d) => sum + d[metric], 0) / lastN.length;
-    const overallAverage = this.calculateExpected(data, metric);
-    const percentDiff =
-      overallAverage > 0
-        ? ((lastNAverage - overallAverage) / overallAverage) * 100
-        : 0;
+    // Take only the last N games
+    const lastNGames = sortedData.slice(0, n);
 
-    return parseFloat(percentDiff.toFixed(1));
-  }
+    if (lastNGames.length === 0) {
+      return { text: '-', value: null };
+    }
 
-  // Calculate percentage difference for a specific period compared to overall average
-  calculatePeriodDiff(periodData, allData, metric) {
-    if (!periodData || periodData.length === 0) return 0;
+    // Count games where player exceeded prop line
+    const gamesOverProp = lastNGames.filter(
+      (game) => game[metric] > propValue
+    ).length;
 
-    // Calculate the average for the period
-    const periodAverage = this.calculateExpected(periodData, metric);
+    const percentOverProp = (gamesOverProp / lastNGames.length) * 100;
 
-    // Calculate the overall average
-    const overallAverage = this.calculateExpected(allData, metric);
-
-    // Calculate percentage difference between the two averages
-    const percentDiff =
-      overallAverage > 0
-        ? ((periodAverage - overallAverage) / overallAverage) * 100
-        : 0;
-
-    return parseFloat(percentDiff.toFixed(1));
+    return {
+      text: this.formatPercentage(percentOverProp),
+      value: percentOverProp,
+    };
   }
 
   // Render the table with current data, applying filters and sorting
   renderTable() {
-    console.log(`Rendering table with ${this.data.length} entries`);
+    try {
+      console.log(`Rendering table with ${this.data.length} entries`);
 
-    // Apply sorting if needed
-    if (this.sortColumn && this.sortDirection) {
-      this.sortData();
-    }
+      // Make a copy of the data for filtering
+      let filteredData = [...this.data];
 
-    // Filter data based on metric filter
-    let filteredData = this.data;
+      // Apply metric filter if not set to "all"
+      if (this.metricFilter !== 'all') {
+        filteredData = filteredData.filter(
+          (d) => d.metric === this.metricFilter
+        );
+        console.log(
+          `Filtered to ${filteredData.length} rows with metric: ${this.metricFilter}`
+        );
+      } else {
+        console.log(`Showing all metrics (${filteredData.length} rows)`);
+      }
 
-    // Apply metric filter if not set to "all"
-    if (this.metricFilter !== 'all') {
-      filteredData = this.data.filter((d) => d.metric === this.metricFilter);
-      console.log(
-        `Filtered to ${filteredData.length} rows with metric: ${this.metricFilter}`
+      // Store filtered data for sorting
+      this.filteredData = filteredData;
+
+      // Apply sorting if needed
+      if (this.sortColumn && this.sortDirection) {
+        this.sortData();
+      }
+
+      // Calculate total pages
+      this.totalPages = Math.max(
+        1,
+        Math.ceil(filteredData.length / this.pageSize)
       );
-    } else {
-      console.log(`Showing all metrics (${filteredData.length} rows)`);
+
+      // Ensure current page is valid
+      if (this.currentPage > this.totalPages) {
+        this.currentPage = this.totalPages;
+      }
+
+      // Get data for current page
+      const startIndex = (this.currentPage - 1) * this.pageSize;
+      const endIndex = Math.min(
+        startIndex + this.pageSize,
+        filteredData.length
+      );
+      const pageData = filteredData.slice(startIndex, endIndex);
+
+      console.log(
+        `Showing page ${this.currentPage} of ${this.totalPages} (${pageData.length} rows)`
+      );
+
+      // Clear existing table body
+      this.tbody.html('');
+
+      if (pageData.length === 0) {
+        // Display a message if no data is available
+        const emptyRow = this.tbody.append('tr');
+        emptyRow
+          .append('td')
+          .attr('colspan', '10')
+          .style('text-align', 'center')
+          .text('No data available');
+      } else {
+        // Render each row for current page
+        pageData.forEach((d) => {
+          const row = this.tbody.append('tr').classed('data-row', true);
+          this.populateRow(row, d.player, d.team, d.metric, d.rawData);
+        });
+      }
+
+      this.updatePaginationControls(filteredData.length);
+
+      // Set up player link listeners
+      this.setupPlayerLinkListeners();
+    } catch (error) {
+      console.error('Error rendering table:', error);
+      // Display error message in the table
+      this.tbody.html('');
+      const errorRow = this.tbody.append('tr');
+      errorRow
+        .append('td')
+        .attr('colspan', '10')
+        .style('text-align', 'center')
+        .style('color', 'red')
+        .text(`Error rendering table: ${error.message}`);
     }
-
-    // Calculate total pages
-    this.totalPages = Math.max(
-      1,
-      Math.ceil(filteredData.length / this.pageSize)
-    );
-
-    // Ensure current page is valid
-    if (this.currentPage > this.totalPages) {
-      this.currentPage = this.totalPages;
-    }
-
-    // Get data for current page
-    const startIndex = (this.currentPage - 1) * this.pageSize;
-    const endIndex = Math.min(startIndex + this.pageSize, filteredData.length);
-    const pageData = filteredData.slice(startIndex, endIndex);
-
-    console.log(
-      `Showing page ${this.currentPage} of ${this.totalPages} (${pageData.length} rows)`
-    );
-
-    // Clear existing table body
-    this.tbody.html('');
-
-    // Render each row for current page
-    const fragment = document.createDocumentFragment();
-    const tbody = document.createElement('tbody');
-
-    // Use a more efficient approach for creating rows
-    pageData.forEach((d) => {
-      const row = document.createElement('tr');
-      row.className = 'data-row';
-
-      this.populateRow(row, d.player, d.team, d.metric, d.rawData);
-      tbody.appendChild(row);
-    });
-
-    fragment.appendChild(tbody);
-    this.tbody
-      .node()
-      .parentNode.replaceChild(fragment.firstChild, this.tbody.node());
-    this.tbody = d3.select(tbody);
-
-    // Update pagination controls
-    this.updatePaginationControls(filteredData.length);
-
-    // Set up player link listeners
-    this.setupPlayerLinkListeners();
   }
 
   // Populate a table row with player data
   populateRow(row, player, team, metric, playerData) {
-    // Sort data by date (most recent first) to ensure we're using the latest games
-    const sortedData = [...playerData].sort((a, b) => b.date - a.date);
+    try {
+      // Calculate the expected value (overall average for this metric)
+      const expected = this.calculateAverage(playerData, metric);
 
-    // Get the most recent games for calculations
-    const recentGames = sortedData.slice(0, 5);
+      // Get prop value if available
+      const propKey = `${player.toLowerCase()}_${metric}`;
+      const propValue = this.propValues.has(propKey)
+        ? this.propValues.get(propKey)
+        : null;
 
-    // Calculate the expected value (overall average for this metric)
-    const expected = this.calculateExpected(playerData, metric);
+      // Add player name with link
+      const playerCell = row.append('td');
+      playerCell
+        .append('a')
+        .attr('href', '#')
+        .classed('player-link', true)
+        .attr('data-player', player)
+        .attr('data-metric', metric)
+        .text(player);
 
-    // Calculate the actual value (average of most recent 5 games)
-    const actual =
-      recentGames.length > 0
-        ? recentGames.reduce((sum, d) => sum + d[metric], 0) /
-          recentGames.length
-        : 0;
+      // Add team name
+      row.append('td').text(team);
 
-    // Calculate the last 3, 5, 10 game averages
-    const last3Games = sortedData.slice(0, 3);
-    const last5Games = sortedData.slice(0, 5);
-    const last10Games = sortedData.slice(0, 10);
+      // Add metric name
+      row
+        .append('td')
+        .classed('metric-name', true)
+        .text(this.formatMetricName(metric));
 
-    const l3Avg =
-      last3Games.length > 0
-        ? last3Games.reduce((sum, d) => sum + d[metric], 0) / last3Games.length
-        : 0;
+      // Add expected value (average)
+      row.append('td').text(expected.toFixed(2));
 
-    const l5Avg =
-      last5Games.length > 0
-        ? last5Games.reduce((sum, d) => sum + d[metric], 0) / last5Games.length
-        : 0;
+      // Add prop value
+      row
+        .append('td')
+        .classed('prop-value', true)
+        .text(propValue !== null ? propValue.toFixed(2) : '-');
 
-    const l10Avg =
-      last10Games.length > 0
-        ? last10Games.reduce((sum, d) => sum + d[metric], 0) /
-          last10Games.length
-        : 0;
+      // Calculate L3, L5, and L10 percentages using the new function
+      const l3Result = this.calculateLastNGamesOverProp(
+        playerData,
+        metric,
+        propValue,
+        3
+      );
+      row.append('td').classed('l3-percentage', true).text(l3Result.text);
 
-    // Calculate percentage differences from expected
-    const l3Diff = expected > 0 ? ((l3Avg - expected) / expected) * 100 : 0;
-    const l5Diff = expected > 0 ? ((l5Avg - expected) / expected) * 100 : 0;
-    const l10Diff = expected > 0 ? ((l10Avg - expected) / expected) * 100 : 0;
+      const l5Result = this.calculateLastNGamesOverProp(
+        playerData,
+        metric,
+        propValue,
+        5
+      );
+      row.append('td').classed('l5-percentage', true).text(l5Result.text);
 
-    // Calculate current year data
-    const currentYear = new Date().getFullYear();
-    const currentYearData = playerData.filter(
-      (d) => d.date.getFullYear() === currentYear
-    );
+      const l10Result = this.calculateLastNGamesOverProp(
+        playerData,
+        metric,
+        propValue,
+        10
+      );
+      row.append('td').classed('l10-percentage', true).text(l10Result.text);
 
-    // Calculate the current year average
-    const currentYearAvg =
-      currentYearData.length > 0
-        ? currentYearData.reduce((sum, d) => sum + d[metric], 0) /
-          currentYearData.length
-        : 0;
+      // Add placeholder for Current Year column (no calculation)
+      row.append('td').classed('current-year-percentage', true).text('-');
 
-    // Calculate percentage difference between current year average and overall average
-    const currentYearDiff =
-      expected > 0 && currentYearData.length > 0
-        ? ((currentYearAvg - expected) / expected) * 100
-        : 0;
-
-    // For all-time, this should be 0 or very close to 0 since all data is from 2025
-    const allTimeAvg = this.calculateExpected(playerData, metric);
-    const allTimeDiff =
-      expected > 0 ? ((allTimeAvg - expected) / expected) * 100 : 0;
-
-    // Add player name with link
-    let cell = document.createElement('td');
-    let link = document.createElement('a');
-    link.href = '#';
-    link.className = 'player-link';
-    link.setAttribute('data-player', player);
-    link.setAttribute('data-metric', metric);
-    link.textContent = player;
-    cell.appendChild(link);
-    row.appendChild(cell);
-
-    // Add team name
-    cell = document.createElement('td');
-    cell.textContent = team;
-    row.appendChild(cell);
-
-    // Add metric name
-    cell = document.createElement('td');
-    cell.className = 'metric-name';
-    cell.textContent = this.formatMetricName(metric);
-    row.appendChild(cell);
-
-    // Add expected value
-    cell = document.createElement('td');
-    cell.textContent = expected.toFixed(2);
-    row.appendChild(cell);
-
-    // Add L3 average with performance indicators
-    cell = document.createElement('td');
-    cell.className = 'l3-percentage';
-    if (l3Diff > 0) cell.classList.add('over-performance');
-    if (l3Diff < 0) cell.classList.add('under-performance');
-    cell.innerHTML = this.formatPercentage(l3Diff);
-    row.appendChild(cell);
-
-    // Add L5 average with performance indicators
-    cell = document.createElement('td');
-    cell.className = 'l5-percentage';
-    if (l5Diff > 0) cell.classList.add('over-performance');
-    if (l5Diff < 0) cell.classList.add('under-performance');
-    cell.innerHTML = this.formatPercentage(l5Diff);
-    row.appendChild(cell);
-
-    // Add L10 average with performance indicators
-    cell = document.createElement('td');
-    cell.className = 'l10-percentage';
-    if (l10Diff > 0) cell.classList.add('over-performance');
-    if (l10Diff < 0) cell.classList.add('under-performance');
-    cell.innerHTML = this.formatPercentage(l10Diff);
-    row.appendChild(cell);
-
-    // Add current year percentage with performance indicators
-    cell = document.createElement('td');
-    cell.className = 'current-year-percentage';
-    if (currentYearDiff > 0) cell.classList.add('over-performance');
-    if (currentYearDiff < 0) cell.classList.add('under-performance');
-    cell.innerHTML =
-      currentYearData.length > 0
-        ? this.formatPercentage(currentYearDiff)
-        : 'N/A';
-    row.appendChild(cell);
-
-    // Add all-time percentage with performance indicators
-    cell = document.createElement('td');
-    cell.className = 'all-time-percentage';
-    if (allTimeDiff > 0) cell.classList.add('over-performance');
-    if (allTimeDiff < 0) cell.classList.add('under-performance');
-    cell.innerHTML = this.formatPercentage(allTimeDiff);
-    row.appendChild(cell);
+      // Add placeholder for All-time column (no calculation)
+      row.append('td').classed('all-time-percentage', true).text('-');
+    } catch (error) {
+      console.error(`Error populating row for player ${player}:`, error);
+      // Add error message to row
+      row.html(''); // Clear any partial row content
+      row
+        .append('td')
+        .attr('colspan', 10)
+        .style('text-align', 'center')
+        .style('color', 'red')
+        .text(`Error loading data for ${player}: ${error.message}`);
+    }
   }
 
   // Update pagination controls with current state
@@ -734,8 +769,14 @@ class PerformanceTable {
 
   // Format percentage with + or - sign
   formatPercentage(value) {
-    const rounded = Math.round(value);
+    if (value === null || value === undefined || isNaN(value)) return '-';
+
+    // Round to 1 decimal place
+    const rounded = parseFloat(value.toFixed(1));
+
+    // Add + sign for positive values, - is automatically added for negative values
     const sign = rounded > 0 ? '+' : '';
+
     return `${sign}${rounded}%`;
   }
 
@@ -746,219 +787,148 @@ class PerformanceTable {
 
   // Sort data based on current sort column and direction
   sortData() {
-    if (!this.sortColumn || !this.sortDirection) {
+    if (!this.sortColumn || !this.sortDirection || !this.filteredData) {
+      console.warn('Sort called without column, direction, or filtered data');
       return;
     }
 
     console.log(`Sorting by ${this.sortColumn} in ${this.sortDirection} order`);
 
-    this.data.sort((a, b) => {
+    this.filteredData.sort((a, b) => {
       let valueA, valueB;
 
-      // For each player-metric combination, calculate the sort value on demand
-      if (
-        a.player &&
-        a.metric &&
-        a.rawData &&
-        b.player &&
-        b.metric &&
-        b.rawData
-      ) {
-        const metricA = a.metric;
-        const metricB = b.metric;
-        const playerDataA = a.rawData;
-        const playerDataB = b.rawData;
+      switch (this.sortColumn) {
+        case 'player':
+          return this.sortDirection === 'asc'
+            ? a.player.localeCompare(b.player)
+            : b.player.localeCompare(a.player);
 
-        // Sort by date (most recent first)
-        const sortedDataA = [...playerDataA].sort((x, y) => y.date - x.date);
-        const sortedDataB = [...playerDataB].sort((x, y) => y.date - x.date);
+        case 'team':
+          return this.sortDirection === 'asc'
+            ? (a.team || '').localeCompare(b.team || '')
+            : (b.team || '').localeCompare(a.team || '');
 
-        // Calculate values based on sort column
-        switch (this.sortColumn) {
-          case 'average':
-            valueA = this.calculateExpected(playerDataA, metricA);
-            valueB = this.calculateExpected(playerDataB, metricB);
-            break;
+        case 'metric':
+          return this.sortDirection === 'asc'
+            ? a.metric.localeCompare(b.metric)
+            : b.metric.localeCompare(a.metric);
 
-          case 'l3Diff':
-            const last3GamesA = sortedDataA.slice(0, 3);
-            const last3GamesB = sortedDataB.slice(0, 3);
+        case 'average':
+          valueA = a.avg || 0;
+          valueB = b.avg || 0;
+          break;
 
-            const l3AvgA =
-              last3GamesA.length > 0
-                ? last3GamesA.reduce((sum, d) => sum + d[metricA], 0) /
-                  last3GamesA.length
-                : 0;
+        case 'propValue':
+          const propKeyA = `${a.player.toLowerCase()}_${a.metric}`;
+          const propKeyB = `${b.player.toLowerCase()}_${b.metric}`;
+          valueA = this.propValues.has(propKeyA)
+            ? this.propValues.get(propKeyA)
+            : -Infinity;
+          valueB = this.propValues.has(propKeyB)
+            ? this.propValues.get(propKeyB)
+            : -Infinity;
+          break;
 
-            const l3AvgB =
-              last3GamesB.length > 0
-                ? last3GamesB.reduce((sum, d) => sum + d[metricB], 0) /
-                  last3GamesB.length
-                : 0;
+        case 'l3Diff':
+          // Calculate percentage of L3 games over prop line for sorting
+          const propKeyL3A = `${a.player.toLowerCase()}_${a.metric}`;
+          const propKeyL3B = `${b.player.toLowerCase()}_${b.metric}`;
+          const propL3A = this.propValues.has(propKeyL3A)
+            ? this.propValues.get(propKeyL3A)
+            : null;
+          const propL3B = this.propValues.has(propKeyL3B)
+            ? this.propValues.get(propKeyL3B)
+            : null;
 
-            const expectedA = this.calculateExpected(playerDataA, metricA);
-            const expectedB = this.calculateExpected(playerDataB, metricB);
+          const l3ResultA = this.calculateLastNGamesOverProp(
+            a.rawData,
+            a.metric,
+            propL3A,
+            3
+          );
+          const l3ResultB = this.calculateLastNGamesOverProp(
+            b.rawData,
+            b.metric,
+            propL3B,
+            3
+          );
 
-            valueA =
-              expectedA > 0 ? ((l3AvgA - expectedA) / expectedA) * 100 : 0;
-            valueB =
-              expectedB > 0 ? ((l3AvgB - expectedB) / expectedB) * 100 : 0;
-            break;
+          valueA = l3ResultA.value !== null ? l3ResultA.value : -Infinity;
+          valueB = l3ResultB.value !== null ? l3ResultB.value : -Infinity;
+          break;
 
-          case 'l5Diff':
-            const last5GamesA = sortedDataA.slice(0, 5);
-            const last5GamesB = sortedDataB.slice(0, 5);
+        case 'l5Diff':
+          // Calculate percentage of L5 games over prop line for sorting
+          const propKeyL5A = `${a.player.toLowerCase()}_${a.metric}`;
+          const propKeyL5B = `${b.player.toLowerCase()}_${b.metric}`;
+          const propL5A = this.propValues.has(propKeyL5A)
+            ? this.propValues.get(propKeyL5A)
+            : null;
+          const propL5B = this.propValues.has(propKeyL5B)
+            ? this.propValues.get(propKeyL5B)
+            : null;
 
-            const l5AvgA =
-              last5GamesA.length > 0
-                ? last5GamesA.reduce((sum, d) => sum + d[metricA], 0) /
-                  last5GamesA.length
-                : 0;
+          const l5ResultA = this.calculateLastNGamesOverProp(
+            a.rawData,
+            a.metric,
+            propL5A,
+            5
+          );
+          const l5ResultB = this.calculateLastNGamesOverProp(
+            b.rawData,
+            b.metric,
+            propL5B,
+            5
+          );
 
-            const l5AvgB =
-              last5GamesB.length > 0
-                ? last5GamesB.reduce((sum, d) => sum + d[metricB], 0) /
-                  last5GamesB.length
-                : 0;
+          valueA = l5ResultA.value !== null ? l5ResultA.value : -Infinity;
+          valueB = l5ResultB.value !== null ? l5ResultB.value : -Infinity;
+          break;
 
-            const expected5A = this.calculateExpected(playerDataA, metricA);
-            const expected5B = this.calculateExpected(playerDataB, metricB);
+        case 'l10Diff':
+          // Calculate percentage of L10 games over prop line for sorting
+          const propKeyL10A = `${a.player.toLowerCase()}_${a.metric}`;
+          const propKeyL10B = `${b.player.toLowerCase()}_${b.metric}`;
+          const propL10A = this.propValues.has(propKeyL10A)
+            ? this.propValues.get(propKeyL10A)
+            : null;
+          const propL10B = this.propValues.has(propKeyL10B)
+            ? this.propValues.get(propKeyL10B)
+            : null;
 
-            valueA =
-              expected5A > 0 ? ((l5AvgA - expected5A) / expected5A) * 100 : 0;
-            valueB =
-              expected5B > 0 ? ((l5AvgB - expected5B) / expected5B) * 100 : 0;
-            break;
+          const l10ResultA = this.calculateLastNGamesOverProp(
+            a.rawData,
+            a.metric,
+            propL10A,
+            10
+          );
+          const l10ResultB = this.calculateLastNGamesOverProp(
+            b.rawData,
+            b.metric,
+            propL10B,
+            10
+          );
 
-          case 'l10Diff':
-            const last10GamesA = sortedDataA.slice(0, 10);
-            const last10GamesB = sortedDataB.slice(0, 10);
+          valueA = l10ResultA.value !== null ? l10ResultA.value : -Infinity;
+          valueB = l10ResultB.value !== null ? l10ResultB.value : -Infinity;
+          break;
 
-            const l10AvgA =
-              last10GamesA.length > 0
-                ? last10GamesA.reduce((sum, d) => sum + d[metricA], 0) /
-                  last10GamesA.length
-                : 0;
+        // Keep Current Year and All-time as placeholders
+        case 'currentYearDiff':
+        case 'percentOver':
+          valueA = 0;
+          valueB = 0;
+          break;
 
-            const l10AvgB =
-              last10GamesB.length > 0
-                ? last10GamesB.reduce((sum, d) => sum + d[metricB], 0) /
-                  last10GamesB.length
-                : 0;
-
-            const expected10A = this.calculateExpected(playerDataA, metricA);
-            const expected10B = this.calculateExpected(playerDataB, metricB);
-
-            valueA =
-              expected10A > 0
-                ? ((l10AvgA - expected10A) / expected10A) * 100
-                : 0;
-            valueB =
-              expected10B > 0
-                ? ((l10AvgB - expected10B) / expected10B) * 100
-                : 0;
-            break;
-
-          case 'currentYearDiff':
-            const currentYear = new Date().getFullYear();
-
-            const currentYearDataA = playerDataA.filter(
-              (d) => d.date.getFullYear() === currentYear
-            );
-
-            const currentYearDataB = playerDataB.filter(
-              (d) => d.date.getFullYear() === currentYear
-            );
-
-            // Calculate the current year average
-            const currentYearAvgA =
-              currentYearDataA.length > 0
-                ? currentYearDataA.reduce((sum, d) => sum + d[metricA], 0) /
-                  currentYearDataA.length
-                : 0;
-
-            const currentYearAvgB =
-              currentYearDataB.length > 0
-                ? currentYearDataB.reduce((sum, d) => sum + d[metricB], 0) /
-                  currentYearDataB.length
-                : 0;
-
-            const expectedYearA = this.calculateExpected(playerDataA, metricA);
-            const expectedYearB = this.calculateExpected(playerDataB, metricB);
-
-            // Calculate percentage difference between current year average and overall average
-            valueA =
-              expectedYearA > 0 && currentYearDataA.length > 0
-                ? ((currentYearAvgA - expectedYearA) / expectedYearA) * 100
-                : 0;
-
-            valueB =
-              expectedYearB > 0 && currentYearDataB.length > 0
-                ? ((currentYearAvgB - expectedYearB) / expectedYearB) * 100
-                : 0;
-            break;
-
-          case 'percentOver':
-            // For all-time, this should be 0 or very close to 0 since all data is from 2025
-            const allTimeAvgA = this.calculateExpected(playerDataA, metricA);
-            const allTimeAvgB = this.calculateExpected(playerDataB, metricB);
-
-            const expectedAllTimeA = this.calculateExpected(
-              playerDataA,
-              metricA
-            );
-            const expectedAllTimeB = this.calculateExpected(
-              playerDataB,
-              metricB
-            );
-
-            valueA =
-              expectedAllTimeA > 0
-                ? ((allTimeAvgA - expectedAllTimeA) / expectedAllTimeA) * 100
-                : 0;
-            valueB =
-              expectedAllTimeB > 0
-                ? ((allTimeAvgB - expectedAllTimeB) / expectedAllTimeB) * 100
-                : 0;
-            break;
-
-          case 'player':
-            valueA = a.player;
-            valueB = b.player;
-            break;
-
-          case 'team':
-            valueA = a.team || '';
-            valueB = b.team || '';
-            break;
-
-          case 'metric':
-            valueA = a.metric;
-            valueB = b.metric;
-            break;
-
-          default:
-            valueA = a[this.sortColumn] || 0;
-            valueB = b[this.sortColumn] || 0;
-        }
-      } else {
-        // Fallback if data is incomplete
-        valueA = a[this.sortColumn] || 0;
-        valueB = b[this.sortColumn] || 0;
+        default:
+          valueA = 0;
+          valueB = 0;
       }
 
-      // Handle string comparison
-      if (typeof valueA === 'string') {
-        return this.sortDirection === 'asc'
-          ? valueA.localeCompare(valueB)
-          : valueB.localeCompare(valueA);
-      }
-
-      // Handle numeric comparison
       return this.sortDirection === 'asc' ? valueA - valueB : valueB - valueA;
     });
 
-    console.log(`Sorted ${this.data.length} rows`);
+    console.log(`Sorted ${this.filteredData.length} rows`);
   }
 
   // Set up event listeners for sortable column headers
