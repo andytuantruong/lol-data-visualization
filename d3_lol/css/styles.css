@@ -762,13 +762,6 @@ input[type='number'].filter-select {
   color: #ccc;
 }
 
-.subtitle {
-  color: #999;
-  font-size: 16px;
-  margin-top: 5px;
-  margin-bottom: 20px;
-}
-
 @media (max-width: 768px) {
   .navigation-links {
     gap: 10px;
@@ -776,10 +769,6 @@ input[type='number'].filter-select {
 
   .nav-link {
     padding: 8px 12px;
-    font-size: 14px;
-  }
-
-  .subtitle {
     font-size: 14px;
   }
 }
@@ -974,6 +963,67 @@ input[type='number'].filter-select {
   }
 
   .page-indicator {
+    font-size: 12px;
+  }
+}
+
+/* Checkbox filter styles */
+.checkbox-filter {
+  margin-top: 10px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+}
+
+.checkbox-label input[type='checkbox'] {
+  margin-right: 8px;
+  width: 16px;
+  height: 16px;
+  accent-color: #4caf50;
+  cursor: pointer;
+}
+
+.checkbox-label span {
+  user-select: none;
+}
+
+@media (max-width: 768px) {
+  .checkbox-label {
+    font-size: 13px;
+  }
+
+  .checkbox-label input[type='checkbox'] {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+/* Game Count Control*/
+.game-count-control {
+  max-width: 280px;
+  min-width: 200px;
+}
+
+.game-count-control .segment {
+  padding: 8px 10px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .game-count-control {
+    max-width: 100%;
+    min-width: unset;
+  }
+
+  .game-count-control .segment {
+    padding: 8px 6px;
     font-size: 12px;
   }
 }

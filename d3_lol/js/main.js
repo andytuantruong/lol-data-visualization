@@ -4,6 +4,7 @@ class ChartManager {
     this.chart = null;
     this.currentPlayer = null;
     this.currentMetric = 'kills';
+    this.currentGameCount = 'all';
     this.metricDisplay = document.getElementById('metric-display');
 
     if (this.metricDisplay) {
@@ -16,6 +17,28 @@ class ChartManager {
         getValue: (el) => parseInt(el.value) || 0,
         apply: (data, value) =>
           data.filter((d) => d[this.currentMetric] >= value),
+      },
+      gameCount: {
+        id: 'game-count-control',
+        getValue: (el) => {
+          const activeSegment = el.querySelector('.segment.active');
+          return activeSegment
+            ? activeSegment.getAttribute('data-value')
+            : 'all';
+        },
+        apply: (data, value) => {
+          if (value === 'all') return data;
+
+          // Parse the count from the value lastN -> N
+          const count = parseInt(value.replace('last', ''));
+          if (isNaN(count) || count <= 0) return data;
+
+          // Sort by date (most recent first), take only the last N games, then re-sort by date ascending
+          return [...data]
+            .sort((a, b) => b.date - a.date)
+            .slice(0, count)
+            .sort((a, b) => a.date - b.date);
+        },
       },
     };
 
@@ -327,18 +350,23 @@ class ChartManager {
       }
 
       // Set up metric segmented control
-      const segments = document.querySelectorAll('.segmented-control .segment');
-      if (segments.length > 0) {
+      const metricSegments = document.querySelectorAll(
+        '.segmented-control:not(.game-count-control) .segment'
+      );
+      if (metricSegments.length > 0) {
         // Initialize slider position on page load
         this.positionSlider();
 
-        segments.forEach((segment) => {
+        metricSegments.forEach((segment) => {
           segment.addEventListener('click', (event) => {
-            // Remove active class from all segments
-            segments.forEach((s) => s.classList.remove('active'));
+            // Remove active class from all segments in this control
+            const parentControl = event.target.closest('.segmented-control');
+            parentControl
+              .querySelectorAll('.segment')
+              .forEach((s) => s.classList.remove('active'));
 
             event.target.classList.add('active');
-            this.positionSlider();
+            this.positionSlider(parentControl);
             const metric = event.target.getAttribute('data-value');
             this.currentMetric = metric;
             const metricDisplay = document.getElementById('metric-display');
@@ -351,6 +379,46 @@ class ChartManager {
         });
       }
 
+      // Set up game count segmented control
+      const gameCountSegments = document.querySelectorAll(
+        '.game-count-control .segment'
+      );
+      if (gameCountSegments.length > 0) {
+        this.positionSlider(document.querySelector('.game-count-control'));
+
+        gameCountSegments.forEach((segment) => {
+          segment.addEventListener('click', (event) => {
+            // Remove active class from all segments in this control
+            const parentControl = event.target.closest('.segmented-control');
+            parentControl
+              .querySelectorAll('.segment')
+              .forEach((s) => s.classList.remove('active'));
+
+            event.target.classList.add('active');
+            this.positionSlider(parentControl);
+            const gameCount = event.target.getAttribute('data-value');
+            this.currentGameCount = gameCount;
+
+            // Save preference to localStorage
+            localStorage.setItem('selectedGameCount', gameCount);
+
+            this.updateChart();
+          });
+        });
+
+        // Check if there's a saved preference
+        const savedGameCount = localStorage.getItem('selectedGameCount');
+        if (savedGameCount) {
+          const savedSegment = document.querySelector(
+            `.game-count-control .segment[data-value="${savedGameCount}"]`
+          );
+          if (savedSegment) {
+            // Simulate a click on the saved segment
+            savedSegment.click();
+          }
+        }
+      }
+
       // Set up min metric input
       const minMetricInput = document.getElementById('min-metric');
       if (minMetricInput) {
@@ -359,9 +427,10 @@ class ChartManager {
         });
       }
 
-      // Add window resize event to reposition slider
+      // Add window resize event to reposition sliders
       window.addEventListener('resize', () => {
         this.positionSlider();
+        this.positionSlider(document.querySelector('.game-count-control'));
       });
 
       console.log('Chart event listeners set up successfully');
@@ -371,27 +440,43 @@ class ChartManager {
   }
 
   // Helper method to position the slider correctly
-  positionSlider() {
+  positionSlider(controlElement) {
     try {
-      // Find the active segment and slider in the current page context
-      const activeSegment = document.querySelector(
-        '.segmented-control .segment.active'
-      );
-      const slider = document.querySelector('.segmented-control .slider');
+      // If no specific control is provided, default to the metric control
+      const control =
+        controlElement ||
+        document.querySelector('.segmented-control:not(.game-count-control)');
+      if (!control) {
+        console.warn('No segmented control found for positioning slider');
+        return;
+      }
+
+      // Find the active segment and slider in the provided control
+      const activeSegment = control.querySelector('.segment.active');
+      const slider = control.querySelector('.slider');
 
       if (activeSegment && slider) {
         // Get the position and dimensions of the active segment
         const rect = activeSegment.getBoundingClientRect();
-        const parentRect = activeSegment.parentElement.getBoundingClientRect();
+        const parentRect = control.getBoundingClientRect();
 
         // Calculate the left position relative to the parent
         const leftPosition = rect.left - parentRect.left;
 
         // Set the slider position and width
-        slider.style.width = rect.width + 'px';
-        slider.style.left = leftPosition + 'px';
+        slider.style.width = `${rect.width}px`;
+        slider.style.left = `${leftPosition}px`;
 
-        console.log('Slider positioned successfully');
+        // Ensure the slider is visible by adding a small transition
+        slider.style.transition = 'left 0.2s ease, width 0.2s ease';
+
+        const isGameCountControl =
+          control.classList.contains('game-count-control');
+        console.log(
+          `Slider positioned successfully for ${
+            isGameCountControl ? 'game count' : 'metric'
+          } control`
+        );
       }
     } catch (error) {
       console.error('Error positioning slider:', error);
@@ -463,7 +548,11 @@ class ChartManager {
 
   applyFilters(data) {
     return Object.values(this.filters).reduce((filteredData, filter) => {
-      const element = document.getElementById(filter.id);
+      const element =
+        filter.id === 'game-count-control'
+          ? document.querySelector(`.${filter.id}`)
+          : document.getElementById(filter.id);
+
       if (element) {
         const value = filter.getValue(element);
         return filter.apply(filteredData, value);
@@ -502,9 +591,9 @@ class ChartManager {
       }
 
       console.log(
-        `Stats for ${metric}: Average = ${avg.toFixed(
-          2
-        )}, Median = ${median.toFixed(2)}`
+        `Stats for ${metric} (${
+          this.currentGameCount
+        }): Average = ${avg.toFixed(2)}, Median = ${median.toFixed(2)}`
       );
 
       // Update stats in the UI - handle performance.html
@@ -635,25 +724,31 @@ class ChartManager {
 
                   // Set metric
                   const segments = document.querySelectorAll(
-                    '.segmented-control .segment'
-                  );
-                  const slider = document.querySelector(
-                    '.segmented-control .slider'
+                    '.segmented-control:not(.game-count-control) .segment'
                   );
 
-                  segments.forEach((segment, index) => {
+                  segments.forEach((segment) => {
                     if (segment.dataset.value === metric) {
-                      segments.forEach((s) => s.classList.remove('active'));
+                      // Find the parent control
+                      const parentControl =
+                        segment.closest('.segmented-control');
+
+                      // Remove active class from all segments in this control
+                      parentControl
+                        .querySelectorAll('.segment')
+                        .forEach((s) => s.classList.remove('active'));
+
+                      // Add active class to this segment
                       segment.classList.add('active');
 
-                      if (slider) {
-                        slider.style.transform = `translateX(${index * 100}%)`;
-                      }
+                      // Position the slider
+                      this.positionSlider(parentControl);
 
                       this.currentMetric = metric;
 
                       if (this.metricDisplay) {
-                        this.metricDisplay.textContent = segment.textContent;
+                        this.metricDisplay.textContent =
+                          this.formatMetric(metric);
                       }
 
                       localStorage.setItem('selectedMetric', metric);
