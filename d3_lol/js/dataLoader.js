@@ -135,20 +135,13 @@ class DataLoader {
       const csvData = await this.fetchCSVData();
       const allData = d3.csvParse(csvData);
 
-      const loadingMessage = document.querySelector('.loading-message');
-      if (loadingMessage) {
-        loadingMessage.textContent = 'Parsing player data...';
-      }
-
       // Group data by player name
       const playerDataMap = d3.group(allData, (d) => d.playername);
 
       // Process each player's data
       const processedData = new Map();
-      let processedCount = 0;
-      const totalPlayers = playerDataMap.size;
-      const updateInterval = Math.max(1, Math.floor(totalPlayers / 10));
 
+      // Process all players at once
       playerDataMap.forEach((playerRows, playerName) => {
         if (!playerName) return; // Skip empty player names
 
@@ -168,25 +161,6 @@ class DataLoader {
 
         // Also cache in the individual player cache
         this.processedPlayerData[playerName] = processedRows;
-
-        processedCount++;
-
-        // Update progress periodically
-        if (
-          processedCount % updateInterval === 0 ||
-          processedCount === totalPlayers
-        ) {
-          const progressPercent = Math.round(
-            (processedCount / totalPlayers) * 100
-          );
-          console.log(
-            `Processed data for ${processedCount}/${totalPlayers} players (${progressPercent}%)`
-          );
-
-          if (loadingMessage) {
-            loadingMessage.textContent = `Processing player data (${progressPercent}%)...`;
-          }
-        }
       });
 
       this.allPlayersData = processedData;

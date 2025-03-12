@@ -8,10 +8,9 @@ document.addEventListener('DOMContentLoaded', async function () {
     // Initialize sliders for all segmented controls
     initializeSliders();
 
-    // Update loading message
-    const loadingMessage = document.querySelector('.loading-message');
-    if (loadingMessage) {
-      loadingMessage.textContent = 'Loading Player Data...';
+    // Show loading overlay
+    if (LoadingManager && typeof LoadingManager.show === 'function') {
+      LoadingManager.show('Loading Esports data...');
     }
 
     // Check if ChartManager is defined
@@ -40,14 +39,29 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     // Load all player data at once to improve performance
     console.log('Pre-loading all player data...');
-    if (loadingMessage) {
-      loadingMessage.textContent =
-        'Loading all player data (this may take a moment)...';
+    if (LoadingManager) {
+      LoadingManager.updateMessage(
+        'Loading all player data (this may take a moment)...'
+      );
     }
-    await DataLoader.loadAllPlayersData();
+
+    // Pre-load the data but don't wait for it to finish processing
+    DataLoader.loadAllPlayersData().catch((error) => {
+      console.error('Error loading all player data:', error);
+    });
+
+    // Hide loading overlay now - the table will show its own loading animation
+    if (LoadingManager && typeof LoadingManager.hide === 'function') {
+      LoadingManager.hide();
+    }
+
+    // Clear player selection data on page refresh to reset the player chart
+    localStorage.removeItem('selectedPlayer');
+    localStorage.removeItem('selectedLeague');
+    localStorage.removeItem('selectedTeam');
+    localStorage.removeItem('selectedMetric');
 
     // Restore the active tab from localStorage if available
-    // This needs to happen after data is loaded but before components are initialized
     restoreActiveTab();
 
     // Initialize the active tab first
@@ -86,43 +100,12 @@ document.addEventListener('DOMContentLoaded', async function () {
       console.error('Error initializing All Time Stats:', error);
     });
 
-    // Hide loading overlay once all components are initialized
-    if (LoadingManager && typeof LoadingManager.hide === 'function') {
-      LoadingManager.hide();
-    } else {
-      const loadingOverlay = document.getElementById('loading-overlay');
-      if (loadingOverlay) {
-        loadingOverlay.style.display = 'none';
-      }
-    }
-
     // Set up player link handlers
     setupPlayerLinkHandlers();
 
-    // If we're on the player chart tab and there's a saved player, update the chart
-    const savedPlayer = localStorage.getItem('selectedPlayer');
-    if (
-      savedPlayer &&
-      activeTabId === 'player-chart' &&
-      window.chartManagerInstance
-    ) {
-      const savedLeague = localStorage.getItem('selectedLeague');
-      const savedTeam = localStorage.getItem('selectedTeam');
-      const savedMetric = localStorage.getItem('selectedMetric') || 'kills';
-
-      if (savedLeague && savedTeam) {
-        console.log(
-          `On player chart tab with saved player ${savedPlayer}, updating chart`
-        );
-        setTimeout(() => {
-          window.chartManagerInstance.selectPlayer(
-            savedPlayer,
-            savedTeam,
-            savedLeague,
-            savedMetric
-          );
-        }, 200);
-      }
+    // Clear the player chart on page refresh
+    if (window.chartManagerInstance && window.chartManagerInstance.resetChart) {
+      window.chartManagerInstance.resetChart();
     }
 
     console.log('Application initialization complete');

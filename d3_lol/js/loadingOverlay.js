@@ -2,7 +2,7 @@ const LoadingManager = {
   overlay: null,
   message: null,
   timeoutId: null,
-  maxWaitTime: 10000, // 10 seconds max wait time
+  maxWaitTime: 60000, // 60 seconds timeout
 
   init() {
     this.overlay = document.getElementById('loading-overlay');
@@ -83,10 +83,5 @@ document.addEventListener('DOMContentLoaded', () => {
   LoadingManager.init();
 });
 
-// Ensure the loading overlay is hidden when the page is fully loaded
-window.addEventListener('load', () => {
-  // Give a small delay to ensure all resources are loaded
-  setTimeout(() => {
-    LoadingManager.hide();
-  }, 500);
-});
+// Hide loading overlay when page is fully loaded
+window.addEventListener('load', () => {});

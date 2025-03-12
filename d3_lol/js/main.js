@@ -630,26 +630,76 @@ class ChartManager {
   }
 
   resetChart() {
-    const playerNameElement = document.getElementById('player-name');
-    if (playerNameElement) {
-      playerNameElement.textContent = 'Select Player';
+    console.log('Resetting chart...');
+
+    // Clear current player and metric
+    this.currentPlayer = null;
+    this.currentTeam = null;
+    this.currentLeague = null;
+    this.currentMetric = 'kills'; // Default to kills
+    this.gameCount = 'all';
+
+    // Reset dropdowns
+    const leagueDropdown = document.getElementById('league-dropdown');
+    const teamDropdown = document.getElementById('team-dropdown');
+    const playerDropdown = document.getElementById('player-dropdown');
+
+    if (leagueDropdown) {
+      leagueDropdown.value = '';
+      if (this.leagueChoices) {
+        this.leagueChoices.setChoiceByValue('');
+      }
     }
 
-    const averageMetric = document.getElementById('average-metric');
-    if (averageMetric) {
-      averageMetric.textContent = '--';
+    if (teamDropdown) {
+      teamDropdown.value = '';
+      teamDropdown.disabled = true;
+      if (this.teamChoices) {
+        this.teamChoices.setChoiceByValue('');
+      }
     }
 
-    const medianMetric = document.getElementById('median-metric');
-    if (medianMetric) {
-      medianMetric.textContent = '--';
+    if (playerDropdown) {
+      playerDropdown.value = '';
+      playerDropdown.disabled = true;
+      if (this.playerChoices) {
+        this.playerChoices.setChoiceByValue('');
+      }
     }
+
+    // Reset metric buttons
+    const metricButtons = document.querySelectorAll(
+      '#player-chart .segmented-control .segment'
+    );
+    metricButtons.forEach((button) => {
+      button.classList.remove('active');
+      if (button.getAttribute('data-value') === 'kills') {
+        button.classList.add('active');
+      }
+    });
+
+    // Reset game count buttons
+    const gameCountButtons = document.querySelectorAll(
+      '.game-count-control .segment'
+    );
+    gameCountButtons.forEach((button) => {
+      button.classList.remove('active');
+      if (button.getAttribute('data-value') === 'all') {
+        button.classList.add('active');
+      }
+    });
+
+    this.positionSlider();
+
+    // Reset stats display
+    document.getElementById('avg-value').textContent = '--';
+    document.getElementById('median-value').textContent = '--';
 
     if (this.chart) {
       this.chart.clear();
     }
 
-    this.currentPlayer = null;
+    console.log('Chart reset complete');
   }
 
   /**

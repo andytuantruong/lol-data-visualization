@@ -24,127 +24,124 @@ class PerformanceTable {
     try {
       console.log('Initializing Performance Table...');
 
-      // Load prop values from CSV
-      await this.loadPropValues();
-
+      // Create table structure first
       this.createTableStructure();
       this.addMetricFilter();
+      this.createTableHeader();
+      this.addPaginationControls();
 
-      // Ensure the "All" button is highlighted and slider is positioned immediately after adding the filter
-      setTimeout(() => {
-        this.ensureAllButtonHighlighted();
-      }, 50);
+      // Set default sort to player name in ascending order
+      this.sortColumn = 'player';
+      this.sortDirection = 'asc';
 
-      console.log('Loading player list...');
-      const allPlayers = await DataLoader.loadPlayerList();
-      console.log(`Found ${allPlayers.length} players in dataset`);
+      this.showTableLoadingAnimation();
 
-      if (allPlayers.length === 0) {
-        throw new Error('No players found in the dataset');
-      }
+      console.log('Loading all available prop values');
+      await this.loadPropValues();
 
-      const loadingMessage = document.querySelector('.loading-message');
-      if (loadingMessage) {
-        loadingMessage.textContent = 'Loading player data...';
-      }
-
-      console.log('Loading all player data at once...');
-      this.data = [];
-
-      // Load all player data in a single request
+      console.log('Loading all player data for performance table...');
       const allPlayersData = await DataLoader.loadAllPlayersData();
 
-      // Process the data for each player
-      let processedCount = 0;
-      const totalPlayers = allPlayers.length;
-      const updateInterval = Math.max(1, Math.floor(totalPlayers / 10));
-
-      for (const player of allPlayers) {
-        try {
-          const playerData = allPlayersData.get(player);
-
-          if (playerData && playerData.length > 0) {
-            const team = playerData[0].teamname;
-
-            for (const metric of this.metrics) {
-              const entry = {
-                player: player,
-                team: team,
-                metric: metric,
-                rawData: playerData,
-              };
-
-              // Calculate average for this metric
-              entry.avg = this.calculateAverage(playerData, metric);
-
-              // Get prop value if available
-              const propKey = `${player.toLowerCase()}_${metric}`;
-              if (this.propValues.has(propKey)) {
-                entry.propValue = this.propValues.get(propKey);
-              } else {
-                entry.propValue = null;
-              }
-
-              this.data.push(entry);
-            }
-          } else {
-            console.warn(`No data found for player: ${player}`);
-          }
-
-          processedCount++;
-
-          if (
-            processedCount % updateInterval === 0 ||
-            processedCount === totalPlayers
-          ) {
-            const progressPercent = Math.round(
-              (processedCount / totalPlayers) * 100
-            );
-            console.log(
-              `Processed ${processedCount}/${totalPlayers} players (${progressPercent}%)`
-            );
-
-            if (loadingMessage) {
-              loadingMessage.textContent = `Processing player data (${progressPercent}%)...`;
-            }
-          }
-        } catch (error) {
-          console.error(`Error processing player ${player}:`, error);
-        }
+      if (!allPlayersData || allPlayersData.size === 0) {
+        console.error('No player data loaded');
+        throw new Error('No player data available');
       }
 
-      this.originalData = [...this.data];
+      console.log(`Loaded data for ${allPlayersData.size} players`);
 
-      console.log(
-        `Completed processing ${processedCount} players with ${this.data.length} metric entries`
+      // Process player data for the table
+      this.processPlayerData(allPlayersData);
+
+      // Set the metric filter to "all" by default
+      this.metricFilter = 'all';
+      const metricSegments = document.querySelectorAll(
+        '.metric-filter-container .segmented-control .segment'
       );
+      metricSegments.forEach((segment) => {
+        segment.classList.remove('active');
+        if (segment.getAttribute('data-value') === 'all') {
+          segment.classList.add('active');
+        }
+      });
+      this.positionMetricSlider();
 
-      // Make sure we have data to display
-      if (this.data.length === 0) {
-        console.error('No player data was processed successfully');
-        throw new Error('Failed to process player data');
+      this.setupEventListeners();
+      this.renderTable();
+
+      // Update sort indicators for the default sort
+      const playerHeader = this.thead.select('th:nth-child(1)').node();
+      if (playerHeader) {
+        this.updateSortIndicators(playerHeader);
       }
 
-      this.renderTable();
-      this.setupEventListeners();
-      this.setupPlayerLinkListeners();
-
-      // Final check to ensure "All" button is highlighted and slider is positioned
-      setTimeout(() => {
-        this.ensureAllButtonHighlighted();
-      }, 100);
-
+      console.timeEnd('initializePerformanceTable');
       console.log('Performance Table initialization complete');
+
+      // Hide the loading overlay if it's still visible
+      if (
+        window.LoadingManager &&
+        typeof window.LoadingManager.hide === 'function'
+      ) {
+        window.LoadingManager.hide();
+      }
     } catch (error) {
       console.error('Error initializing performance table:', error);
-      this.container.html(`
-        <div class="error-message">
-          <h3>Error Loading Players</h3>
-          <p>${error.message}</p>
-          <p>Please check the console for more details.</p>
-        </div>
-      `);
+
+      this.container.html('');
+      this.container
+        .append('div')
+        .attr('class', 'data-error')
+        .style('display', 'block')
+        .html(
+          `<h3>Error</h3><p>Error loading performance data: ${error.message}</p>`
+        );
+
+      if (
+        window.LoadingManager &&
+        typeof window.LoadingManager.hide === 'function'
+      ) {
+        window.LoadingManager.hide();
+      }
+
       throw error;
+    }
+  }
+
+  // Show a loading animation in the table itself
+  showTableLoadingAnimation() {
+    // Clear any existing content in the table body
+    this.tbody.html('');
+
+    // Create loading rows
+    const loadingRows = [];
+    for (let i = 0; i < 10; i++) {
+      loadingRows.push(`
+        <tr class="data-row">
+          <td colspan="10" style="padding: 10px; text-align: center;">
+            <div style="background: linear-gradient(90deg, #333, #444, #333); background-size: 200% 100%; animation: loading-pulse 1.5s infinite; height: 20px; border-radius: 4px;"></div>
+          </td>
+        </tr>
+      `);
+    }
+
+    // Add a style for the loading animation
+    const styleElement = document.createElement('style');
+    styleElement.textContent = `
+      @keyframes loading-pulse {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+      }
+    `;
+    document.head.appendChild(styleElement);
+
+    // Add the loading rows to the table
+    this.tbody.html(loadingRows.join(''));
+
+    // Update pagination text
+    const itemRangeDisplay = document.getElementById('item-range-display');
+    if (itemRangeDisplay) {
+      itemRangeDisplay.textContent = 'Loading data...';
     }
   }
 
@@ -224,134 +221,160 @@ class PerformanceTable {
 
   // Create the basic table structure with header and body
   createTableStructure() {
-    this.container.html('');
+    try {
+      console.log('Creating performance table structure...');
 
-    // Create table controls container without the label
-    this.container.append('div').attr('class', 'table-controls');
+      // Clear any existing content first
+      this.container.html('');
 
-    this.table = this.container
-      .append('table')
-      .attr('class', 'performance-table');
+      // First add the metric filter container at the top
+      this.container.append('div').attr('class', 'metric-filter-container');
 
-    this.thead = this.table.append('thead');
-    this.createTableHeader();
+      // Then add the table element
+      this.table = this.container
+        .append('table')
+        .attr('class', 'performance-table');
 
-    this.tbody = this.table.append('tbody');
-
-    this.addPaginationControls();
+      // Create table header and body
+      this.thead = this.table.append('thead');
+      this.tbody = this.table.append('tbody');
+      console.log('Table structure created successfully');
+    } catch (error) {
+      console.error('Error creating table structure:', error);
+    }
   }
 
   // Add pagination controls below the table
   addPaginationControls() {
-    const paginationContainer = this.container
-      .append('div')
-      .attr('class', 'pagination-controls');
+    // Create pagination container
+    const paginationContainer = document.createElement('div');
+    paginationContainer.className = 'pagination-controls';
+    this.container.node().appendChild(paginationContainer);
 
-    // Page size selector
-    const pageSizeContainer = paginationContainer
-      .append('div')
-      .attr('class', 'page-size-container');
+    // Page size container (left side)
+    const pageSizeContainer = document.createElement('div');
+    pageSizeContainer.className = 'page-size-container';
 
-    pageSizeContainer.append('span').text('Rows per page: ');
+    const pageSizeLabel = document.createElement('span');
+    pageSizeLabel.textContent = 'Show entries:';
+    pageSizeContainer.appendChild(pageSizeLabel);
 
-    const pageSizeSelect = pageSizeContainer
-      .append('select')
-      .attr('class', 'page-size-select');
+    const pageSizeSelect = document.createElement('select');
+    pageSizeSelect.className = 'page-size-select';
 
-    [10, 20, 50, 100].forEach((size) => {
-      pageSizeSelect
-        .append('option')
-        .attr('value', size)
-        .property('selected', size === this.pageSize)
-        .text(size);
+    [10, 25, 50, 100].forEach((size) => {
+      const option = document.createElement('option');
+      option.value = size;
+      option.textContent = size;
+      pageSizeSelect.appendChild(option);
     });
 
-    // Item range display
-    paginationContainer
-      .append('div')
-      .attr('class', 'item-range-display')
-      .text('Showing 0-0 of 0 items');
+    pageSizeContainer.appendChild(pageSizeSelect);
+    paginationContainer.appendChild(pageSizeContainer);
 
-    // Page navigation
-    const pageNavContainer = paginationContainer
-      .append('div')
-      .attr('class', 'page-nav-container');
+    // Page navigation container (center)
+    const pageNavContainer = document.createElement('div');
+    pageNavContainer.className = 'page-nav-container';
 
-    pageNavContainer
-      .append('button')
-      .attr('class', 'page-nav-button first-page')
-      .attr('title', 'First Page')
-      .html('&laquo;');
+    const prevButton = document.createElement('button');
+    prevButton.className = 'page-nav-button prev-page';
+    prevButton.textContent = 'Previous';
+    prevButton.disabled = true;
+    pageNavContainer.appendChild(prevButton);
 
-    pageNavContainer
-      .append('button')
-      .attr('class', 'page-nav-button prev-page')
-      .attr('title', 'Previous Page')
-      .html('&lsaquo;');
+    const pageIndicator = document.createElement('div');
+    pageIndicator.className = 'page-indicator';
+    pageIndicator.textContent = 'Page 1 of 1';
+    pageNavContainer.appendChild(pageIndicator);
 
-    pageNavContainer
-      .append('span')
-      .attr('class', 'page-indicator')
-      .html(
-        'Page <span class="current-page">1</span> of <span class="total-pages">1</span>'
-      );
+    const nextButton = document.createElement('button');
+    nextButton.className = 'page-nav-button next-page';
+    nextButton.textContent = 'Next';
+    nextButton.disabled = true;
+    pageNavContainer.appendChild(nextButton);
 
-    pageNavContainer
-      .append('button')
-      .attr('class', 'page-nav-button next-page')
-      .attr('title', 'Next Page')
-      .html('&rsaquo;');
+    paginationContainer.appendChild(pageNavContainer);
 
-    pageNavContainer
-      .append('button')
-      .attr('class', 'page-nav-button last-page')
-      .attr('title', 'Last Page')
-      .html('&raquo;');
+    // Item range display (right side)
+    const itemRangeDisplay = document.createElement('div');
+    itemRangeDisplay.className = 'item-range-display';
+    itemRangeDisplay.textContent = 'Showing 0 to 0 of 0 entries';
+    paginationContainer.appendChild(itemRangeDisplay);
+
+    // Store references to pagination elements
+    this.paginationElements = {
+      container: paginationContainer,
+      pageSizeSelect: pageSizeSelect,
+      itemRangeDisplay: itemRangeDisplay,
+      prevButton: prevButton,
+      nextButton: nextButton,
+      pageIndicator: pageIndicator,
+    };
+
+    // Set initial page size
+    this.pageSize = parseInt(pageSizeSelect.value);
   }
 
   // Create the table header with sortable columns
   createTableHeader() {
     const headerRow = this.thead.append('tr');
 
-    headerRow.append('th').text('Player');
-    headerRow.append('th').text('Team');
+    headerRow
+      .append('th')
+      .text('Player')
+      .classed('sortable', true)
+      .attr('data-column', 'player');
+
+    headerRow
+      .append('th')
+      .text('Team')
+      .classed('sortable', true)
+      .attr('data-column', 'team');
+
     headerRow.append('th').text('Metric');
+
     headerRow
       .append('th')
       .text('Avg')
       .attr('title', 'Average value across all games')
       .classed('sortable', true)
       .attr('data-column', 'average');
+
     headerRow
       .append('th')
       .text('Prop')
       .attr('title', 'Prop value from player_kill_lines.csv')
       .classed('sortable', true)
       .attr('data-column', 'propValue');
+
     headerRow
       .append('th')
       .text('L3 +/-')
       .attr('title', 'Performance compared to Prop in Last 3 Games')
       .classed('sortable', true)
       .attr('data-column', 'l3Diff');
+
     headerRow
       .append('th')
       .text('L5 +/-')
       .attr('title', 'Performance compared to Prop in Last 5 Games')
       .classed('sortable', true)
       .attr('data-column', 'l5Diff');
+
     headerRow
       .append('th')
       .text('L10 +/-')
       .attr('title', 'Performance compared to Prop in Last 10 Games')
       .classed('sortable', true)
       .attr('data-column', 'l10Diff');
+
     headerRow
       .append('th')
       .text(`${this.currentYear}`)
       .attr('title', `Performance difference in ${this.currentYear}`)
       .classed('sortable', true)
       .attr('data-column', 'currentYearDiff');
+
     headerRow
       .append('th')
       .text('All-Time')
@@ -362,163 +385,115 @@ class PerformanceTable {
 
   // Add metric filter buttons (Kills, Deaths, Assists)
   addMetricFilter() {
-    // Create a container for the metric filter
-    const filterContainer = document.createElement('div');
-    filterContainer.className = 'metric-filter-container';
+    try {
+      console.log('Adding metric filter...');
 
-    // Add a label
-    const label = document.createElement('label');
-    label.textContent = 'Filter by Metric:';
-    filterContainer.appendChild(label);
+      // Find the metric filter container
+      const filterContainer = this.container.select('.metric-filter-container');
 
-    // Create a segmented control for the metric filter
-    const segmentedControl = document.createElement('div');
-    segmentedControl.className = 'segmented-control';
+      // Clear any existing content
+      filterContainer.html('');
 
-    // Create a slider element
-    const slider = document.createElement('div');
-    slider.className = 'slider';
-    segmentedControl.appendChild(slider);
+      filterContainer.append('label').text('Filter by Metric:');
 
-    // Create "All" button and set it as active by default
-    const allButton = document.createElement('button');
-    allButton.className = 'segment active';
-    allButton.setAttribute('data-value', 'all');
-    allButton.textContent = 'All';
-    segmentedControl.appendChild(allButton);
+      // Create segmented control for metric filtering
+      const segmentedControl = filterContainer
+        .append('div')
+        .attr('class', 'segmented-control metric-filter');
 
-    // Create buttons for each metric
-    const metrics = ['kills', 'deaths', 'assists'];
-    metrics.forEach((metric) => {
-      const button = document.createElement('button');
-      button.className = 'segment';
-      button.setAttribute('data-value', metric);
-      button.textContent = this.formatMetricName(metric);
-      segmentedControl.appendChild(button);
-    });
+      // Add slider element
+      segmentedControl.append('div').attr('class', 'slider');
 
-    // Add the segmented control to the filter container
-    filterContainer.appendChild(segmentedControl);
+      // Add segments for each metric option
+      segmentedControl
+        .append('button')
+        .attr('class', 'segment active') // Make "All" active by default
+        .attr('data-value', 'all')
+        .text('All');
 
-    // Add the filter container to the table container
-    this.container.node().prepend(filterContainer);
+      segmentedControl
+        .append('button')
+        .attr('class', 'segment')
+        .attr('data-value', 'kills')
+        .text('Kills');
 
-    // Set the current metric filter to "all" by default
-    this.metricFilter = 'all';
+      segmentedControl
+        .append('button')
+        .attr('class', 'segment')
+        .attr('data-value', 'deaths')
+        .text('Deaths');
 
-    // Add event listeners for all buttons
-    const buttons = segmentedControl.querySelectorAll('.segment');
-    buttons.forEach((button) => {
-      button.addEventListener('click', (event) => {
-        // Remove active class from all buttons
-        buttons.forEach((btn) => btn.classList.remove('active'));
+      segmentedControl
+        .append('button')
+        .attr('class', 'segment')
+        .attr('data-value', 'assists')
+        .text('Assists');
 
-        // Add active class to clicked button
-        button.classList.add('active');
+      // Set initial metric filter
+      this.metricFilter = 'all';
 
-        // Update metric filter
-        this.metricFilter = button.getAttribute('data-value');
+      // Position the slider under the active segment
+      setTimeout(() => {
         this.positionMetricSlider();
+      }, 0);
 
-        // Reset to first page when changing filter
-        this.currentPage = 1;
-
-        // Render the table with the new filter
-        this.renderTable();
-      });
-    });
+      console.log('Metric filter added successfully');
+    } catch (error) {
+      console.error('Error adding metric filter:', error);
+    }
   }
 
   positionMetricSlider() {
-    const segmentedControl = this.container.select('.segmented-control').node();
-    if (!segmentedControl) return;
-
-    const activeSegment = segmentedControl.querySelector('.segment.active');
-    const slider = segmentedControl.querySelector('.slider');
-
-    if (activeSegment && slider) {
-      const rect = activeSegment.getBoundingClientRect();
-      const parentRect = segmentedControl.getBoundingClientRect();
-
-      // Position the slider under the active segment
-      slider.style.width = rect.width + 'px';
-      slider.style.left = rect.left - parentRect.left + 'px';
-
-      console.log(
-        `Positioned slider under "${activeSegment.textContent}" button`
-      );
-    } else {
-      console.warn(
-        'Could not position slider: active segment or slider not found'
-      );
-
-      // If no active segment is found, default to the "All" button
-      const allButton = segmentedControl.querySelector(
-        '.segment[data-value="all"]'
-      );
-      if (allButton && slider) {
-        allButton.classList.add('active');
-        this.metricFilter = 'all';
-
-        // Position the slider after the button has been made active
-        setTimeout(() => {
-          const rect = allButton.getBoundingClientRect();
-          const parentRect = segmentedControl.getBoundingClientRect();
-          slider.style.width = rect.width + 'px';
-          slider.style.left = rect.left - parentRect.left + 'px';
-
-          console.log('Defaulted to "All" button and positioned slider');
-        }, 0);
+    try {
+      const segmentedControl = this.container
+        .select('.metric-filter-container .segmented-control')
+        .node();
+      if (!segmentedControl) {
+        console.warn('Segmented control not found');
+        return;
       }
+
+      const activeSegment = segmentedControl.querySelector('.segment.active');
+      const slider = segmentedControl.querySelector('.slider');
+
+      if (activeSegment && slider) {
+        const rect = activeSegment.getBoundingClientRect();
+        const parentRect = segmentedControl.getBoundingClientRect();
+
+        // Position the slider under the active segment
+        slider.style.width = rect.width + 'px';
+        slider.style.left = rect.left - parentRect.left + 'px';
+
+        console.log(
+          `Positioned slider under "${activeSegment.textContent}" button`
+        );
+      } else {
+        console.warn(
+          'Could not position slider: active segment or slider not found'
+        );
+
+        // If no active segment is found, default to the "All" button
+        const allButton = segmentedControl.querySelector(
+          '.segment[data-value="all"]'
+        );
+        if (allButton && slider) {
+          allButton.classList.add('active');
+          this.metricFilter = 'all';
+
+          // Position the slider after the button has been made active
+          setTimeout(() => {
+            const rect = allButton.getBoundingClientRect();
+            const parentRect = segmentedControl.getBoundingClientRect();
+            slider.style.width = rect.width + 'px';
+            slider.style.left = rect.left - parentRect.left + 'px';
+
+            console.log('Defaulted to "All" button and positioned slider');
+          }, 0);
+        }
+      }
+    } catch (error) {
+      console.error('Error positioning metric slider:', error);
     }
-  }
-
-  // Add a method to ensure the "All" button is highlighted on initialization
-  ensureAllButtonHighlighted() {
-    const segmentedControl = this.container.select('.segmented-control').node();
-    if (!segmentedControl) {
-      console.warn(
-        'Could not find segmented control to highlight "All" button'
-      );
-      return;
-    }
-
-    // Find the "All" button
-    const allButton = segmentedControl.querySelector(
-      '.segment[data-value="all"]'
-    );
-
-    if (!allButton) {
-      console.warn('Could not find "All" button in segmented control');
-      return;
-    }
-
-    // Remove active class from all buttons
-    segmentedControl.querySelectorAll('.segment').forEach((segment) => {
-      segment.classList.remove('active');
-    });
-
-    // Add active class to the "All" button
-    allButton.classList.add('active');
-
-    // Update the metric filter
-    this.metricFilter = 'all';
-
-    // Get the slider element
-    const slider = segmentedControl.querySelector('.slider');
-    if (!slider) {
-      console.warn('Could not find slider element in segmented control');
-      return;
-    }
-
-    // Position the slider directly
-    const rect = allButton.getBoundingClientRect();
-    const parentRect = segmentedControl.getBoundingClientRect();
-
-    slider.style.width = rect.width + 'px';
-    slider.style.left = rect.left - parentRect.left + 'px';
-
-    console.log('Successfully highlighted "All" button and positioned slider');
   }
 
   // Calculate the average value for a metric
@@ -564,207 +539,185 @@ class PerformanceTable {
   // Render the table with current data, applying filters and sorting
   renderTable() {
     try {
-      console.log(`Rendering table with ${this.data.length} entries`);
+      console.log('Rendering performance table...');
+      console.time('renderTable');
 
-      // Make a copy of the data for filtering
-      let filteredData = [...this.data];
+      // Filter data based on current metric filter
+      this.filteredData = [];
 
-      // Apply metric filter if not set to "all"
-      if (this.metricFilter !== 'all') {
-        filteredData = filteredData.filter(
-          (d) => d.metric === this.metricFilter
-        );
-        console.log(
-          `Filtered to ${filteredData.length} rows with metric: ${this.metricFilter}`
-        );
+      if (this.metricFilter === 'all') {
+        // For "All" filter, include all metrics for all players
+        this.data.forEach((player) => {
+          this.metrics.forEach((metric) => {
+            this.filteredData.push({
+              player: player.name,
+              team: player.team,
+              metric: metric,
+              data: player.data,
+              preCalculated: player.metrics[metric],
+            });
+          });
+        });
       } else {
-        console.log(`Showing all metrics (${filteredData.length} rows)`);
-      }
-
-      // Store filtered data for sorting
-      this.filteredData = filteredData;
-
-      // Apply sorting if needed
-      if (this.sortColumn && this.sortDirection) {
-        this.sortData();
-      }
-
-      // Calculate total pages
-      this.totalPages = Math.max(
-        1,
-        Math.ceil(filteredData.length / this.pageSize)
-      );
-
-      // Ensure current page is valid
-      if (this.currentPage > this.totalPages) {
-        this.currentPage = this.totalPages;
-      }
-
-      // Get data for current page
-      const startIndex = (this.currentPage - 1) * this.pageSize;
-      const endIndex = Math.min(
-        startIndex + this.pageSize,
-        filteredData.length
-      );
-      const pageData = filteredData.slice(startIndex, endIndex);
-
-      console.log(
-        `Showing page ${this.currentPage} of ${this.totalPages} (${pageData.length} rows)`
-      );
-
-      // Clear existing table body
-      this.tbody.html('');
-
-      if (pageData.length === 0) {
-        // Display a message if no data is available
-        const emptyRow = this.tbody.append('tr');
-        emptyRow
-          .append('td')
-          .attr('colspan', '10')
-          .style('text-align', 'center')
-          .text('No data available');
-      } else {
-        // Render each row for current page
-        pageData.forEach((d) => {
-          const row = this.tbody.append('tr').classed('data-row', true);
-          this.populateRow(row, d.player, d.team, d.metric, d.rawData);
+        // For specific metric filter, only include that metric
+        this.data.forEach((player) => {
+          this.filteredData.push({
+            player: player.name,
+            team: player.team,
+            metric: this.metricFilter,
+            data: player.data,
+            preCalculated: player.metrics[this.metricFilter],
+          });
         });
       }
 
-      this.updatePaginationControls(filteredData.length);
+      console.log(`Filtered data: ${this.filteredData.length} rows`);
 
-      // Set up player link listeners
-      this.setupPlayerLinkListeners();
+      // Sort the filtered data
+      if (this.sortColumn) {
+        this.sortData();
+      }
+
+      // Clear existing table body content
+      this.tbody.html('');
+
+      // Calculate pagination
+      const totalItems = this.filteredData.length;
+      const startIndex = (this.currentPage - 1) * this.pageSize;
+      const endIndex = Math.min(startIndex + this.pageSize, totalItems);
+      const pageData = this.filteredData.slice(startIndex, endIndex);
+
+      this.totalPages = Math.ceil(totalItems / this.pageSize);
+
+      console.log(
+        `Pagination: Page ${this.currentPage}/${
+          this.totalPages
+        }, showing items ${startIndex + 1}-${endIndex} of ${totalItems}`
+      );
+
+      // Batch DOM operations for better performance
+      const rowsHtml = [];
+
+      // Render each row
+      pageData.forEach((item) => {
+        const rowHtml = this.createRowHtml(
+          item.player,
+          item.team,
+          item.metric,
+          item.preCalculated
+        );
+        rowsHtml.push(rowHtml);
+      });
+
+      // Apply all DOM changes at once
+      this.tbody.html(rowsHtml.join(''));
+
+      // Force a browser reflow to ensure the DOM is updated
+      this.tbody.node().offsetHeight;
+
+      // Add event listeners to player links
+      this.tbody.selectAll('.player-link').on('click', (event) => {
+        event.preventDefault();
+        const playerName = event.target.getAttribute('data-player');
+        const metric = event.target.getAttribute('data-metric');
+        if (playerName && metric) {
+          this.selectPlayerInDropdowns(playerName, metric);
+        }
+      });
+
+      // Update pagination controls
+      this.updatePaginationControls(totalItems);
+
+      console.timeEnd('renderTable');
+      console.log(`Rendered ${pageData.length} rows`);
+
+      // Force another browser reflow to ensure everything is rendered
+      this.container.node().offsetHeight;
     } catch (error) {
       console.error('Error rendering table:', error);
-      // Display error message in the table
+
+      // Display error in the table body
       this.tbody.html('');
-      const errorRow = this.tbody.append('tr');
-      errorRow
+      this.tbody
+        .append('tr')
         .append('td')
-        .attr('colspan', '10')
+        .attr('colspan', 10)
         .style('text-align', 'center')
         .style('color', 'red')
         .text(`Error rendering table: ${error.message}`);
     }
   }
 
-  // Populate a table row with player data
-  populateRow(row, player, team, metric, playerData) {
+  // Create HTML for a table row (faster than DOM manipulation)
+  createRowHtml(player, team, metric, preCalculated) {
     try {
-      // Calculate the expected value (overall average for this metric)
-      const expected = this.calculateAverage(playerData, metric);
+      const average = preCalculated.average;
+      const propValue = preCalculated.propValue;
+      const l3Result = preCalculated.l3;
+      const l5Result = preCalculated.l5;
+      const l10Result = preCalculated.l10;
 
-      // Get prop value if available
-      const propKey = `${player.toLowerCase()}_${metric}`;
-      const propValue = this.propValues.has(propKey)
-        ? this.propValues.get(propKey)
-        : null;
-
-      // Add player name with link
-      const playerCell = row.append('td');
-      playerCell
-        .append('a')
-        .attr('href', '#')
-        .classed('player-link', true)
-        .attr('data-player', player)
-        .attr('data-metric', metric)
-        .text(player);
-
-      // Add team name
-      row.append('td').text(team);
-
-      // Add metric name
-      row
-        .append('td')
-        .classed('metric-name', true)
-        .text(this.formatMetricName(metric));
-
-      // Add expected value (average)
-      row.append('td').text(expected.toFixed(2));
-
-      // Add prop value
-      row
-        .append('td')
-        .classed('prop-value', true)
-        .text(propValue !== null ? propValue.toFixed(2) : '-');
-
-      // Calculate L3, L5, and L10 percentages using the new function
-      const l3Result = this.calculateLastNGamesOverProp(
-        playerData,
-        metric,
-        propValue,
-        3
-      );
-      row.append('td').classed('l3-percentage', true).text(l3Result.text);
-
-      const l5Result = this.calculateLastNGamesOverProp(
-        playerData,
-        metric,
-        propValue,
-        5
-      );
-      row.append('td').classed('l5-percentage', true).text(l5Result.text);
-
-      const l10Result = this.calculateLastNGamesOverProp(
-        playerData,
-        metric,
-        propValue,
-        10
-      );
-      row.append('td').classed('l10-percentage', true).text(l10Result.text);
-
-      // Add placeholder for Current Year column (no calculation)
-      row.append('td').classed('current-year-percentage', true).text('-');
-
-      // Add placeholder for All-time column (no calculation)
-      row.append('td').classed('all-time-percentage', true).text('-');
+      return `
+        <tr class="data-row">
+          <td><a href="#" class="player-link" data-player="${player}" data-metric="${metric}">${player}</a></td>
+          <td>${team}</td>
+          <td class="metric-name">${this.formatMetricName(metric)}</td>
+          <td>${average.toFixed(2)}</td>
+          <td class="prop-value">${
+            propValue !== null ? propValue.toFixed(2) : '-'
+          }</td>
+          <td class="l3-percentage">${l3Result.text}</td>
+          <td class="l5-percentage">${l5Result.text}</td>
+          <td class="l10-percentage">${l10Result.text}</td>
+          <td class="current-year-percentage">-</td>
+          <td class="all-time-percentage">-</td>
+        </tr>
+      `;
     } catch (error) {
-      console.error(`Error populating row for player ${player}:`, error);
-      // Add error message to row
-      row.html(''); // Clear any partial row content
-      row
-        .append('td')
-        .attr('colspan', 10)
-        .style('text-align', 'center')
-        .style('color', 'red')
-        .text(`Error loading data for ${player}: ${error.message}`);
+      console.error(`Error creating row HTML for player ${player}:`, error);
+      return `
+        <tr>
+          <td colspan="10" style="text-align: center; color: red;">
+            Error loading data for ${player}: ${error.message}
+          </td>
+        </tr>
+      `;
     }
   }
 
   // Update pagination controls with current state
   updatePaginationControls(totalItems) {
+    if (!this.paginationElements) return;
+
+    const {
+      pageSizeSelect,
+      itemRangeDisplay,
+      prevButton,
+      nextButton,
+      pageIndicator,
+    } = this.paginationElements;
+
+    // Calculate total pages
+    const totalPages = Math.ceil(totalItems / this.pageSize);
+
     // Update page indicator
-    this.container.select('.current-page').text(this.currentPage);
-    this.container.select('.total-pages').text(this.totalPages);
+    pageIndicator.textContent = `Page ${this.currentPage} of ${
+      totalPages || 1
+    }`;
 
-    // Calculate item range being displayed
-    const startItem = Math.min(
-      totalItems,
-      (this.currentPage - 1) * this.pageSize + 1
-    );
-    const endItem = Math.min(totalItems, this.currentPage * this.pageSize);
+    // Update item range display
+    const start =
+      totalItems === 0 ? 0 : (this.currentPage - 1) * this.pageSize + 1;
+    const end = Math.min(start + this.pageSize - 1, totalItems);
+    itemRangeDisplay.textContent = `Showing ${start} to ${end} of ${totalItems} entries`;
 
-    this.container
-      .select('.item-range-display')
-      .text(`Showing ${startItem}-${endItem} of ${totalItems} items`);
+    // Update button states
+    prevButton.disabled = this.currentPage <= 1;
+    nextButton.disabled = this.currentPage >= totalPages;
 
-    // Enable/disable navigation buttons
-    this.container
-      .select('.first-page')
-      .property('disabled', this.currentPage === 1);
-
-    this.container
-      .select('.prev-page')
-      .property('disabled', this.currentPage === 1);
-
-    this.container
-      .select('.next-page')
-      .property('disabled', this.currentPage === this.totalPages);
-
-    this.container
-      .select('.last-page')
-      .property('disabled', this.currentPage === this.totalPages);
+    // Add aria labels for accessibility
+    prevButton.setAttribute('aria-label', 'Go to previous page');
+    nextButton.setAttribute('aria-label', 'Go to next page');
   }
 
   // Format percentage with + or - sign
@@ -787,196 +740,175 @@ class PerformanceTable {
 
   // Sort data based on current sort column and direction
   sortData() {
-    if (!this.sortColumn || !this.sortDirection || !this.filteredData) {
-      console.warn('Sort called without column, direction, or filtered data');
-      return;
-    }
+    try {
+      console.log(
+        `Sorting by ${this.sortColumn} in ${this.sortDirection} order`
+      );
+      console.time('sortData');
 
-    console.log(`Sorting by ${this.sortColumn} in ${this.sortDirection} order`);
-
-    this.filteredData.sort((a, b) => {
-      let valueA, valueB;
-
-      switch (this.sortColumn) {
-        case 'player':
-          return this.sortDirection === 'asc'
-            ? a.player.localeCompare(b.player)
-            : b.player.localeCompare(a.player);
-
-        case 'team':
-          return this.sortDirection === 'asc'
-            ? (a.team || '').localeCompare(b.team || '')
-            : (b.team || '').localeCompare(a.team || '');
-
-        case 'metric':
-          return this.sortDirection === 'asc'
-            ? a.metric.localeCompare(b.metric)
-            : b.metric.localeCompare(a.metric);
-
-        case 'average':
-          valueA = a.avg || 0;
-          valueB = b.avg || 0;
-          break;
-
-        case 'propValue':
-          const propKeyA = `${a.player.toLowerCase()}_${a.metric}`;
-          const propKeyB = `${b.player.toLowerCase()}_${b.metric}`;
-          valueA = this.propValues.has(propKeyA)
-            ? this.propValues.get(propKeyA)
-            : -Infinity;
-          valueB = this.propValues.has(propKeyB)
-            ? this.propValues.get(propKeyB)
-            : -Infinity;
-          break;
-
-        case 'l3Diff':
-          // Calculate percentage of L3 games over prop line for sorting
-          const propKeyL3A = `${a.player.toLowerCase()}_${a.metric}`;
-          const propKeyL3B = `${b.player.toLowerCase()}_${b.metric}`;
-          const propL3A = this.propValues.has(propKeyL3A)
-            ? this.propValues.get(propKeyL3A)
-            : null;
-          const propL3B = this.propValues.has(propKeyL3B)
-            ? this.propValues.get(propKeyL3B)
-            : null;
-
-          const l3ResultA = this.calculateLastNGamesOverProp(
-            a.rawData,
-            a.metric,
-            propL3A,
-            3
-          );
-          const l3ResultB = this.calculateLastNGamesOverProp(
-            b.rawData,
-            b.metric,
-            propL3B,
-            3
-          );
-
-          valueA = l3ResultA.value !== null ? l3ResultA.value : -Infinity;
-          valueB = l3ResultB.value !== null ? l3ResultB.value : -Infinity;
-          break;
-
-        case 'l5Diff':
-          // Calculate percentage of L5 games over prop line for sorting
-          const propKeyL5A = `${a.player.toLowerCase()}_${a.metric}`;
-          const propKeyL5B = `${b.player.toLowerCase()}_${b.metric}`;
-          const propL5A = this.propValues.has(propKeyL5A)
-            ? this.propValues.get(propKeyL5A)
-            : null;
-          const propL5B = this.propValues.has(propKeyL5B)
-            ? this.propValues.get(propKeyL5B)
-            : null;
-
-          const l5ResultA = this.calculateLastNGamesOverProp(
-            a.rawData,
-            a.metric,
-            propL5A,
-            5
-          );
-          const l5ResultB = this.calculateLastNGamesOverProp(
-            b.rawData,
-            b.metric,
-            propL5B,
-            5
-          );
-
-          valueA = l5ResultA.value !== null ? l5ResultA.value : -Infinity;
-          valueB = l5ResultB.value !== null ? l5ResultB.value : -Infinity;
-          break;
-
-        case 'l10Diff':
-          // Calculate percentage of L10 games over prop line for sorting
-          const propKeyL10A = `${a.player.toLowerCase()}_${a.metric}`;
-          const propKeyL10B = `${b.player.toLowerCase()}_${b.metric}`;
-          const propL10A = this.propValues.has(propKeyL10A)
-            ? this.propValues.get(propKeyL10A)
-            : null;
-          const propL10B = this.propValues.has(propKeyL10B)
-            ? this.propValues.get(propKeyL10B)
-            : null;
-
-          const l10ResultA = this.calculateLastNGamesOverProp(
-            a.rawData,
-            a.metric,
-            propL10A,
-            10
-          );
-          const l10ResultB = this.calculateLastNGamesOverProp(
-            b.rawData,
-            b.metric,
-            propL10B,
-            10
-          );
-
-          valueA = l10ResultA.value !== null ? l10ResultA.value : -Infinity;
-          valueB = l10ResultB.value !== null ? l10ResultB.value : -Infinity;
-          break;
-
-        // Keep Current Year and All-time as placeholders
-        case 'currentYearDiff':
-        case 'percentOver':
-          valueA = 0;
-          valueB = 0;
-          break;
-
-        default:
-          valueA = 0;
-          valueB = 0;
+      if (!this.filteredData || this.filteredData.length === 0) {
+        console.warn('No data to sort');
+        return;
       }
 
-      return this.sortDirection === 'asc' ? valueA - valueB : valueB - valueA;
-    });
+      this.filteredData.sort((a, b) => {
+        let valueA, valueB;
 
-    console.log(`Sorted ${this.filteredData.length} rows`);
+        // Determine values to compare based on sort column
+        switch (this.sortColumn) {
+          case 'player':
+            // For player name, use string comparison
+            valueA = a.player || '';
+            valueB = b.player || '';
+            return this.sortDirection === 'asc'
+              ? valueA.localeCompare(valueB)
+              : valueB.localeCompare(valueA);
+          case 'team':
+            // For team name, use string comparison
+            valueA = a.team || '';
+            valueB = b.team || '';
+            return this.sortDirection === 'asc'
+              ? valueA.localeCompare(valueB)
+              : valueB.localeCompare(valueA);
+          case 'average':
+            valueA = a.preCalculated.average;
+            valueB = b.preCalculated.average;
+            break;
+          case 'propValue':
+            valueA =
+              a.preCalculated.propValue !== null
+                ? a.preCalculated.propValue
+                : -1;
+            valueB =
+              b.preCalculated.propValue !== null
+                ? b.preCalculated.propValue
+                : -1;
+            break;
+          case 'l3Diff':
+            valueA =
+              a.preCalculated.l3.value !== null ? a.preCalculated.l3.value : -1;
+            valueB =
+              b.preCalculated.l3.value !== null ? b.preCalculated.l3.value : -1;
+            break;
+          case 'l5Diff':
+            valueA =
+              a.preCalculated.l5.value !== null ? a.preCalculated.l5.value : -1;
+            valueB =
+              b.preCalculated.l5.value !== null ? b.preCalculated.l5.value : -1;
+            break;
+          case 'l10Diff':
+            valueA =
+              a.preCalculated.l10.value !== null
+                ? a.preCalculated.l10.value
+                : -1;
+            valueB =
+              b.preCalculated.l10.value !== null
+                ? b.preCalculated.l10.value
+                : -1;
+            break;
+          case 'currentYearDiff':
+          case 'percentOver':
+            // These are placeholders for now
+            valueA = 0;
+            valueB = 0;
+            break;
+          default:
+            // Default to player name for any unknown column
+            valueA = a.player || '';
+            valueB = b.player || '';
+            return this.sortDirection === 'asc'
+              ? valueA.localeCompare(valueB)
+              : valueB.localeCompare(valueA);
+        }
+
+        // For numeric values, use numeric comparison
+        if (this.sortDirection === 'asc') {
+          return valueA - valueB;
+        } else {
+          return valueB - valueA;
+        }
+      });
+
+      console.timeEnd('sortData');
+      console.log(`Sorted ${this.filteredData.length} rows`);
+    } catch (error) {
+      console.error('Error sorting data:', error);
+    }
   }
 
   // Set up event listeners for sortable column headers
   setupEventListeners() {
     try {
-      // Set up sort listeners
-      this.table.selectAll('th.sortable').on('click', (event) => {
-        const column = event.currentTarget.getAttribute('data-column');
+      console.log('Setting up performance table event listeners...');
 
-        // If clicking the same column, toggle direction
-        if (column === this.sortColumn) {
-          this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
-        } else {
-          // New column, set to appropriate default direction
-          this.sortColumn = column;
-          // Default to descending for numeric columns, ascending for text
-          this.sortDirection = column === 'player' ? 'asc' : 'desc';
-        }
+      // Set up metric filter event listeners
+      const metricSegments = document.querySelectorAll(
+        '.performance-table-container .metric-filter .segment'
+      );
 
-        // Reset to first page when sorting changes
-        this.currentPage = 1;
-
-        this.updateSortIndicators(event.currentTarget);
-        this.renderTable();
+      // Remove any existing event listeners by cloning and replacing
+      metricSegments.forEach((segment) => {
+        const newSegment = segment.cloneNode(true);
+        segment.parentNode.replaceChild(newSegment, segment);
       });
 
-      // Set up player link listeners
-      this.setupPlayerLinkListeners();
+      // Add new event listeners
+      const newMetricSegments = document.querySelectorAll(
+        '.performance-table-container .metric-filter .segment'
+      );
 
-      // Add window resize event listener for metric slider
-      window.addEventListener('resize', () => {
-        // Debounce the resize event
-        if (this.resizeTimeout) {
-          clearTimeout(this.resizeTimeout);
-        }
+      newMetricSegments.forEach((segment) => {
+        segment.addEventListener('click', (event) => {
+          // Remove active class from all segments
+          newMetricSegments.forEach((s) => s.classList.remove('active'));
 
-        this.resizeTimeout = setTimeout(() => {
-          const filterContainer = this.container
-            .select('.metric-filter-container')
-            .node();
-          if (filterContainer) {
-            this.positionMetricSlider(filterContainer);
+          // Add active class to clicked segment
+          segment.classList.add('active');
+
+          // Update metric filter
+          this.metricFilter = segment.getAttribute('data-value');
+          console.log(`Metric filter changed to: ${this.metricFilter}`);
+
+          // Position the slider
+          this.positionMetricSlider();
+
+          // Re-render the table with the new filter
+          this.renderTable();
+        });
+      });
+
+      // Set up sort event listeners
+      const sortableHeaders = document.querySelectorAll(
+        '.performance-table th.sortable'
+      );
+
+      sortableHeaders.forEach((header) => {
+        header.addEventListener('click', (event) => {
+          const column = event.currentTarget.getAttribute('data-column');
+
+          // If clicking the same column, toggle direction
+          if (column === this.sortColumn) {
+            this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+          } else {
+            // New column, set to appropriate default direction
+            this.sortColumn = column;
+            // Default to descending for numeric columns, ascending for text
+            this.sortDirection =
+              column === 'player' || column === 'team' ? 'asc' : 'desc';
           }
-        }, 100);
+
+          this.updateSortIndicators(event.currentTarget);
+
+          // Re-render the table with the new sort
+          this.renderTable();
+        });
       });
 
       // Set up pagination event listeners
       this.setupPaginationListeners();
+
+      // Set up player link event listeners
+      this.setupPlayerLinkListeners();
 
       console.log('Performance table event listeners set up successfully');
     } catch (error) {
@@ -989,79 +921,94 @@ class PerformanceTable {
 
   // Set up event listeners for pagination controls
   setupPaginationListeners() {
-    // Page size selector
-    this.container.select('.page-size-select').on('change', (event) => {
-      this.pageSize = parseInt(event.target.value);
-      localStorage.setItem('performanceTablePageSize', this.pageSize);
+    if (!this.paginationElements) return;
+
+    const { pageSizeSelect, prevButton, nextButton } = this.paginationElements;
+
+    // Page size change handler
+    pageSizeSelect.addEventListener('change', () => {
+      this.pageSize = parseInt(pageSizeSelect.value);
       this.currentPage = 1; // Reset to first page when changing page size
       this.renderTable();
     });
 
-    this.container.select('.first-page').on('click', () => {
-      if (this.currentPage > 1) {
-        this.currentPage = 1;
-        this.renderTable();
-      }
-    });
-
-    this.container.select('.prev-page').on('click', () => {
+    // Previous page button handler
+    prevButton.addEventListener('click', () => {
       if (this.currentPage > 1) {
         this.currentPage--;
         this.renderTable();
       }
     });
 
-    this.container.select('.next-page').on('click', () => {
-      if (this.currentPage < this.totalPages) {
+    // Next page button handler
+    nextButton.addEventListener('click', () => {
+      const totalItems = this.filteredData.length;
+      const totalPages = Math.ceil(totalItems / this.pageSize);
+
+      if (this.currentPage < totalPages) {
         this.currentPage++;
         this.renderTable();
       }
     });
 
-    this.container.select('.last-page').on('click', () => {
-      if (this.currentPage < this.totalPages) {
-        this.currentPage = this.totalPages;
-        this.renderTable();
+    // Add keyboard navigation for accessibility
+    prevButton.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        prevButton.click();
+      }
+    });
+
+    nextButton.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        nextButton.click();
       }
     });
   }
 
   // Update sort indicators (↑/↓) on column headers
   updateSortIndicators(currentHeader) {
-    this.thead.selectAll('th').each(function () {
-      const text = d3.select(this).text();
-      if (text.includes('↑') || text.includes('↓')) {
-        d3.select(this).text(text.replace(/[↑↓]\s*$/, '').trim());
-      }
-    });
+    try {
+      // Remove existing indicators from all headers
+      this.thead.selectAll('th').each(function () {
+        const text = d3.select(this).text();
+        if (text.includes('↑') || text.includes('↓')) {
+          d3.select(this).text(text.replace(/[↑↓]\s*$/, '').trim());
+        }
+      });
 
-    if (this.sortColumn && this.sortDirection) {
-      const icon = this.sortDirection === 'asc' ? '↑' : '↓';
-      console.log(
-        `Adding sort indicator: ${icon} for column: ${this.sortColumn}`
-      );
-
-      let headerElement = currentHeader;
-
-      if (
-        !headerElement ||
-        headerElement.getAttribute('data-column') !== this.sortColumn
-      ) {
-        headerElement = this.thead
-          .select(`th[data-column="${this.sortColumn}"]`)
-          .node();
-      }
-
-      if (headerElement) {
-        const currentText = d3.select(headerElement).text();
-        d3.select(headerElement).text(`${currentText} ${icon}`);
-      } else {
-        console.warn(
-          `Could not find header element for column: ${this.sortColumn}`
+      if (this.sortColumn && this.sortDirection) {
+        const icon = this.sortDirection === 'asc' ? '↑' : '↓';
+        console.log(
+          `Adding sort indicator: ${icon} for column: ${this.sortColumn}`
         );
+
+        let headerElement = currentHeader;
+
+        if (
+          !headerElement ||
+          headerElement.getAttribute('data-column') !== this.sortColumn
+        ) {
+          // Find the header element for the current sort column
+          headerElement = this.thead
+            .select(`th[data-column="${this.sortColumn}"]`)
+            .node();
+        }
+
+        if (headerElement) {
+          const currentText = d3.select(headerElement).text();
+          d3.select(headerElement).text(`${currentText} ${icon}`);
+        } else {
+          console.warn(
+            `Could not find header element for column: ${this.sortColumn}`
+          );
+        }
+      } else {
+        console.log('No sort indicators added - sorting is inactive');
       }
-    } else {
-      console.log('No sort indicators added - sorting is inactive');
+    } catch (error) {
+      console.error('Error updating sort indicators:', error);
     }
   }
 
@@ -1205,6 +1152,91 @@ class PerformanceTable {
           }, 100);
         }
       }, 100);
+    }
+  }
+
+  processPlayerData(allPlayersData) {
+    try {
+      console.log('Processing player data for performance table...');
+      console.time('processPlayerData');
+
+      // Reset data array
+      this.data = [];
+
+      // Pre-calculate metrics for each player to avoid recalculating during rendering
+      allPlayersData.forEach((playerGames, playerName) => {
+        if (!playerName || playerGames.length === 0) return;
+
+        // Get the most recent team from player data
+        const sortedGames = [...playerGames].sort((a, b) => b.date - a.date);
+        const team = sortedGames[0].teamname;
+
+        // Pre-calculate averages for each metric
+        const preCalculatedMetrics = {};
+        this.metrics.forEach((metric) => {
+          // Calculate average
+          const sum = playerGames.reduce(
+            (total, match) => total + match[metric],
+            0
+          );
+          const average = playerGames.length > 0 ? sum / playerGames.length : 0;
+
+          // Get prop value if available
+          const propKey = `${playerName.toLowerCase()}_${metric}`;
+          const propValue = this.propValues.has(propKey)
+            ? this.propValues.get(propKey)
+            : null;
+
+          // Calculate L3, L5, L10 percentages
+          const l3Result = this.calculateLastNGamesOverProp(
+            playerGames,
+            metric,
+            propValue,
+            3
+          );
+          const l5Result = this.calculateLastNGamesOverProp(
+            playerGames,
+            metric,
+            propValue,
+            5
+          );
+          const l10Result = this.calculateLastNGamesOverProp(
+            playerGames,
+            metric,
+            propValue,
+            10
+          );
+
+          preCalculatedMetrics[metric] = {
+            average: parseFloat(average.toFixed(2)),
+            propValue: propValue,
+            l3: l3Result,
+            l5: l5Result,
+            l10: l10Result,
+          };
+        });
+
+        // Add player to data array with pre-calculated metrics
+        this.data.push({
+          name: playerName,
+          team: team,
+          data: playerGames,
+          metrics: preCalculatedMetrics,
+        });
+      });
+
+      // Store original data for filtering
+      this.originalData = this.data;
+
+      // Set default sort to player name in ascending order
+      this.sortColumn = 'player';
+      this.sortDirection = 'asc';
+
+      console.timeEnd('processPlayerData');
+      console.log(`Processed data for ${this.data.length} players`);
+    } catch (error) {
+      console.error('Error processing player data:', error);
+      throw error; // Re-throw to allow caller to handle
     }
   }
 }
