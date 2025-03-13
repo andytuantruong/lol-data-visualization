@@ -877,31 +877,25 @@ class PerformanceTable {
         });
       });
 
-      // Set up sort event listeners
-      const sortableHeaders = document.querySelectorAll(
-        '.performance-table th.sortable'
-      );
+      // Set up sort column headers
+      this.table.selectAll('th.sortable').on('click', (event) => {
+        const column = event.currentTarget.getAttribute('data-column');
 
-      sortableHeaders.forEach((header) => {
-        header.addEventListener('click', (event) => {
-          const column = event.currentTarget.getAttribute('data-column');
+        // If clicking the same column, toggle direction
+        if (column === this.sortColumn) {
+          this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+          // New column, set to appropriate default direction
+          this.sortColumn = column;
+          this.sortDirection = column === 'player' ? 'asc' : 'desc';
+        }
 
-          // If clicking the same column, toggle direction
-          if (column === this.sortColumn) {
-            this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
-          } else {
-            // New column, set to appropriate default direction
-            this.sortColumn = column;
-            // Default to descending for numeric columns, ascending for text
-            this.sortDirection =
-              column === 'player' || column === 'team' ? 'asc' : 'desc';
-          }
+        // Update sort indicators - pass the current header element
+        this.updateSortIndicators(d3.select(event.currentTarget));
 
-          this.updateSortIndicators(event.currentTarget);
-
-          // Re-render the table with the new sort
-          this.renderTable();
-        });
+        // Sort and re-render the table
+        this.sortData();
+        this.renderTable();
       });
 
       // Set up pagination event listeners
@@ -912,10 +906,7 @@ class PerformanceTable {
 
       console.log('Performance table event listeners set up successfully');
     } catch (error) {
-      console.error(
-        'Error setting up performance table event listeners:',
-        error
-      );
+      console.error('Error setting up event listeners:', error);
     }
   }
 
@@ -970,42 +961,19 @@ class PerformanceTable {
   // Update sort indicators (↑/↓) on column headers
   updateSortIndicators(currentHeader) {
     try {
-      // Remove existing indicators from all headers
-      this.thead.selectAll('th').each(function () {
-        const text = d3.select(this).text();
-        if (text.includes('↑') || text.includes('↓')) {
-          d3.select(this).text(text.replace(/[↑↓]\s*$/, '').trim());
-        }
-      });
+      // First, remove ALL existing sort indicators from ALL headers
+      this.table.selectAll('th .sort-icon').remove();
 
-      if (this.sortColumn && this.sortDirection) {
-        const icon = this.sortDirection === 'asc' ? '↑' : '↓';
-        console.log(
-          `Adding sort indicator: ${icon} for column: ${this.sortColumn}`
-        );
+      // Then add the indicator only to the current sort column
+      if (currentHeader) {
+        const direction = this.sortDirection === 'asc' ? '↑' : '↓';
 
-        let headerElement = currentHeader;
-
-        if (
-          !headerElement ||
-          headerElement.getAttribute('data-column') !== this.sortColumn
-        ) {
-          // Find the header element for the current sort column
-          headerElement = this.thead
-            .select(`th[data-column="${this.sortColumn}"]`)
-            .node();
-        }
-
-        if (headerElement) {
-          const currentText = d3.select(headerElement).text();
-          d3.select(headerElement).text(`${currentText} ${icon}`);
-        } else {
-          console.warn(
-            `Could not find header element for column: ${this.sortColumn}`
-          );
-        }
-      } else {
-        console.log('No sort indicators added - sorting is inactive');
+        // Create a new span for the sort icon
+        currentHeader
+          .append('span')
+          .attr('class', 'sort-icon')
+          .style('margin-left', '5px')
+          .text(direction);
       }
     } catch (error) {
       console.error('Error updating sort indicators:', error);
