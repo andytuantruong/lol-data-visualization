@@ -33,10 +33,14 @@ class MetricsChart {
         .append('svg')
         .attr('preserveAspectRatio', 'xMidYMid meet');
 
-      this.tooltip = this.container
+      this.tooltip = d3
+        .select('body')
         .append('div')
         .attr('class', 'tooltip')
-        .style('opacity', 0);
+        .style('opacity', 0)
+        .style('position', 'absolute')
+        .style('pointer-events', 'none')
+        .style('z-index', 1000);
 
       // Add resize event listener with debouncing
       let resizeTimer;
@@ -373,9 +377,6 @@ class MetricsChart {
         .style('fill', 'transparent')
         .style('pointer-events', 'all')
         .on('mouseover', function (event, d) {
-          const tooltipX = event.pageX;
-          const tooltipY = event.pageY;
-
           // Highlight the bar datapoints on hover
           d3.select(this)
             .transition()
@@ -398,14 +399,14 @@ class MetricsChart {
                Team: ${d.teamname}<br/>
                Result: ${d.result ? 'Win' : 'Loss'}`
             )
-            .style('left', `${tooltipX}px`)
-            .style('top', `${tooltipY}px`)
-            .style('transform', 'translate(-50%, -100%)');
+            .style('left', `${event.pageX + 10}px`)
+            .style('top', `${event.pageY - 10}px`);
         })
         .on('mousemove', function (event) {
+          // Update tooltip position as mouse moves
           self.tooltip
-            .style('left', `${event.pageX}px`)
-            .style('top', `${event.pageY}px`);
+            .style('left', `${event.pageX + 10}px`)
+            .style('top', `${event.pageY - 10}px`);
         })
         .on('mouseout', function () {
           d3.select(this)
