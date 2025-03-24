@@ -313,170 +313,146 @@ class ChartManager {
     }
   }
 
+  /* Used for the player chart:
+     League dropdown change -> update team dropdown
+     Team dropdown change -> update player dropdown
+     Metric segmented control -> update chart with new metric
+     Game count segmented control -> update chart with new game count filter
+     Slider -> update chart with new position
+  */
   setupEventListeners() {
     try {
-      console.log('Setting up chart event listeners...');
+      console.log('Setting up event listeners...');
 
-      // Set up league dropdown change event
+      // League dropdown change
       const leagueDropdown = document.getElementById('league-dropdown');
       if (leagueDropdown) {
         leagueDropdown.addEventListener('change', (event) => {
           const league = event.target.value;
           this.updateTeamDropdown(league);
+          this.currentLeague = league;
+          localStorage.setItem('selectedLeague', league);
         });
       }
 
-      // Set up team dropdown change event
+      // Team dropdown change
       const teamDropdown = document.getElementById('team-dropdown');
       if (teamDropdown) {
         teamDropdown.addEventListener('change', (event) => {
-          const league = leagueDropdown ? leagueDropdown.value : '';
           const team = event.target.value;
+          const league = leagueDropdown.value;
           this.updatePlayerDropdown(league, team);
+          this.currentTeam = team;
+          localStorage.setItem('selectedTeam', team);
         });
       }
 
-      // Set up player dropdown change event
+      // Player dropdown change
       const playerDropdown = document.getElementById('player-dropdown');
       if (playerDropdown) {
         playerDropdown.addEventListener('change', (event) => {
-          const playerName = event.target.value;
-          if (playerName) {
-            const league = leagueDropdown ? leagueDropdown.value : '';
-            const team = teamDropdown ? teamDropdown.value : '';
-            this.selectPlayer(playerName, team, league, this.currentMetric);
-          }
-        });
-      }
-
-      // Set up metric segmented control
-      const metricSegments = document.querySelectorAll(
-        '.segmented-control:not(.game-count-control) .segment'
-      );
-      if (metricSegments.length > 0) {
-        // Initialize slider position on page load
-        this.positionSlider();
-
-        metricSegments.forEach((segment) => {
-          segment.addEventListener('click', (event) => {
-            // Remove active class from all segments in this control
-            const parentControl = event.target.closest('.segmented-control');
-            parentControl
-              .querySelectorAll('.segment')
-              .forEach((s) => s.classList.remove('active'));
-
-            event.target.classList.add('active');
-            this.positionSlider(parentControl);
-            const metric = event.target.getAttribute('data-value');
-            this.currentMetric = metric;
-            const metricDisplay = document.getElementById('metric-display');
-            if (metricDisplay) {
-              metricDisplay.textContent = this.formatMetric(metric);
-            }
-
-            this.updateChart();
-          });
-        });
-      }
-
-      // Set up game count segmented control
-      const gameCountSegments = document.querySelectorAll(
-        '.game-count-control .segment'
-      );
-      if (gameCountSegments.length > 0) {
-        this.positionSlider(document.querySelector('.game-count-control'));
-
-        gameCountSegments.forEach((segment) => {
-          segment.addEventListener('click', (event) => {
-            // Remove active class from all segments in this control
-            const parentControl = event.target.closest('.segmented-control');
-            parentControl
-              .querySelectorAll('.segment')
-              .forEach((s) => s.classList.remove('active'));
-
-            event.target.classList.add('active');
-            this.positionSlider(parentControl);
-            const gameCount = event.target.getAttribute('data-value');
-            this.currentGameCount = gameCount;
-
-            // Save preference to localStorage
-            localStorage.setItem('selectedGameCount', gameCount);
-
-            this.updateChart();
-          });
-        });
-
-        // Check if there's a saved preference
-        const savedGameCount = localStorage.getItem('selectedGameCount');
-        if (savedGameCount) {
-          const savedSegment = document.querySelector(
-            `.game-count-control .segment[data-value="${savedGameCount}"]`
-          );
-          if (savedSegment) {
-            // Simulate a click on the saved segment
-            savedSegment.click();
-          }
-        }
-      }
-
-      // Set up min metric input
-      const minMetricInput = document.getElementById('min-metric');
-      if (minMetricInput) {
-        minMetricInput.addEventListener('change', () => {
           this.updateChart();
         });
       }
 
-      // Add window resize event to reposition sliders
-      window.addEventListener('resize', () => {
-        this.positionSlider();
-        this.positionSlider(document.querySelector('.game-count-control'));
+      // Metric segmented control
+      const metricSegments = document.querySelectorAll(
+        '#player-chart .segmented-control:not(.game-count-control) .segment'
+      );
+
+      metricSegments.forEach((segment) => {
+        segment.addEventListener('click', (event) => {
+          // Remove active class from all segments in this control
+          const control = segment.closest('.segmented-control');
+          control.querySelectorAll('.segment').forEach((s) => {
+            s.classList.remove('active');
+          });
+
+          // Add active class to clicked segment
+          segment.classList.add('active');
+
+          // Position the slider
+          this.positionSlider(control);
+
+          // Update the chart with the new metric
+          this.currentMetric = segment.getAttribute('data-value');
+          localStorage.setItem('selectedMetric', this.currentMetric);
+          this.updateChart();
+        });
       });
 
-      console.log('Chart event listeners set up successfully');
+      // Game count segmented control
+      const gameCountSegments = document.querySelectorAll(
+        '#player-chart .game-count-control .segment'
+      );
+
+      gameCountSegments.forEach((segment) => {
+        segment.addEventListener('click', (event) => {
+          // Remove active class from all segments in this control
+          const control = segment.closest('.segmented-control');
+          control.querySelectorAll('.segment').forEach((s) => {
+            s.classList.remove('active');
+          });
+
+          // Add active class to clicked segment
+          segment.classList.add('active');
+
+          // Position the slider
+          this.positionSlider(control);
+
+          // Update the chart with the new game count filter
+          this.gameCountFilter = segment.getAttribute('data-value');
+          localStorage.setItem('gameCountFilter', this.gameCountFilter);
+          this.updateChart();
+        });
+      });
+
+      // Initialize sliders
+      const segmentedControls = document.querySelectorAll(
+        '#player-chart .segmented-control'
+      );
+      segmentedControls.forEach((control) => {
+        this.positionSlider(control);
+      });
+
+      console.log('Event listeners set up successfully');
     } catch (error) {
-      console.error('Error setting up chart event listeners:', error);
+      console.error('Error setting up event listeners:', error);
     }
   }
 
-  // Helper method to position the slider correctly
   positionSlider(controlElement) {
     try {
-      // If no specific control is provided, default to the metric control
-      const control =
-        controlElement ||
-        document.querySelector('.segmented-control:not(.game-count-control)');
-      if (!control) {
-        console.warn('No segmented control found for positioning slider');
+      if (!controlElement) {
+        // If no specific control is provided, position all sliders in player chart
+        const controls = document.querySelectorAll(
+          '#player-chart .segmented-control'
+        );
+        controls.forEach((control) => this.positionSlider(control));
         return;
       }
 
-      // Find the active segment and slider in the provided control
-      const activeSegment = control.querySelector('.segment.active');
-      const slider = control.querySelector('.slider');
+      const activeSegment = controlElement.querySelector('.segment.active');
+      const slider = controlElement.querySelector('.slider');
 
       if (activeSegment && slider) {
-        // Get the position and dimensions of the active segment
-        const rect = activeSegment.getBoundingClientRect();
-        const parentRect = control.getBoundingClientRect();
+        const segmentRect = activeSegment.getBoundingClientRect();
+        const controlRect = controlElement.getBoundingClientRect();
 
-        // Calculate the left position relative to the parent
-        const leftPosition = rect.left - parentRect.left;
+        // Calculate the left position relative to the control
+        const left = segmentRect.left - controlRect.left;
 
         // Set the slider position and width
-        slider.style.width = `${rect.width}px`;
-        slider.style.left = `${leftPosition}px`;
-
-        // Ensure the slider is visible by adding a small transition
-        slider.style.transition = 'left 0.2s ease, width 0.2s ease';
-
-        const isGameCountControl =
-          control.classList.contains('game-count-control');
-        console.log(
-          `Slider positioned successfully for ${
-            isGameCountControl ? 'game count' : 'metric'
-          } control`
-        );
+        slider.style.width = `${segmentRect.width}px`;
+        slider.style.left = `${left}px`;
+        slider.style.display = 'block';
+      } else if (!activeSegment && slider) {
+        // If no active segment, default to first one
+        const firstSegment = controlElement.querySelector('.segment');
+        if (firstSegment) {
+          firstSegment.classList.add('active');
+          this.positionSlider(controlElement);
+        }
       }
     } catch (error) {
       console.error('Error positioning slider:', error);
@@ -733,12 +709,13 @@ class ChartManager {
         }
 
         if (leagueExists) {
+          // Set league dropdown value
           leagueDropdown.value = league;
 
           // Update team dropdown
           this.updateTeamDropdown(league);
 
-          // Set team
+          // Set team dropdown value
           const teamDropdown = document.getElementById('team-dropdown');
           if (teamDropdown) {
             // Check if team exists in dropdown
@@ -751,12 +728,13 @@ class ChartManager {
             }
 
             if (teamExists) {
+              // Set team dropdown value
               teamDropdown.value = team;
 
               // Update player dropdown
               this.updatePlayerDropdown(league, team);
 
-              // Set player
+              // Set player dropdown value
               const playerDropdown = document.getElementById('player-dropdown');
               if (playerDropdown) {
                 // Check if player exists in dropdown
@@ -769,70 +747,221 @@ class ChartManager {
                 }
 
                 if (playerExists) {
+                  // Set player dropdown value
                   playerDropdown.value = playerName;
-                  this.currentPlayer = playerName;
 
                   // Set metric
-                  const segments = document.querySelectorAll(
-                    '.segmented-control:not(.game-count-control) .segment'
+                  const metricSegments = document.querySelectorAll(
+                    '#player-chart .segmented-control:not(.game-count-control) .segment'
                   );
-
-                  segments.forEach((segment) => {
-                    if (segment.dataset.value === metric) {
-                      // Find the parent control
-                      const parentControl =
-                        segment.closest('.segmented-control');
-
-                      // Remove active class from all segments in this control
-                      parentControl
-                        .querySelectorAll('.segment')
-                        .forEach((s) => s.classList.remove('active'));
-
-                      // Add active class to this segment
+                  metricSegments.forEach((segment) => {
+                    if (segment.getAttribute('data-value') === metric) {
+                      // Remove active class from all segments
+                      metricSegments.forEach((s) =>
+                        s.classList.remove('active')
+                      );
+                      // Add active class to selected segment
                       segment.classList.add('active');
-
-                      // Position the slider
-                      this.positionSlider(parentControl);
-
-                      this.currentMetric = metric;
-
-                      if (this.metricDisplay) {
-                        this.metricDisplay.textContent =
-                          this.formatMetric(metric);
-                      }
-
-                      localStorage.setItem('selectedMetric', metric);
+                      // Update slider position
+                      this.positionSlider();
                     }
                   });
 
-                  // Update chart
-                  setTimeout(() => {
-                    this.updateChart();
-                  }, 100);
+                  // Store current selections
+                  this.currentLeague = league;
+                  this.currentTeam = team;
+                  this.currentPlayer = playerName;
+                  this.currentMetric = metric;
+
+                  this.updateChart();
+
+                  // Load and display series data if available
+                  this.loadSeriesData(playerName, metric);
                 } else {
-                  console.warn('Player not found in dropdown:', playerName);
+                  console.warn(`Player ${playerName} not found in dropdown`);
                 }
               }
             } else {
-              console.warn('Team not found in dropdown:', team);
+              console.warn(`Team ${team} not found in dropdown`);
             }
           }
         } else {
-          console.warn('League not found in dropdown:', league);
+          console.warn(`League ${league} not found in dropdown`);
         }
       }
     } catch (error) {
-      console.error('Error in selectPlayer:', error);
+      console.error('Error selecting player:', error);
+    }
+  }
+
+  /**
+   * Load and display series data for a player
+   * @param {string} playerName - Player name
+   * @param {string} metric - Metric to display
+   */
+  async loadSeriesData(playerName, metric) {
+    try {
+      console.log(
+        `Loading series data for ${playerName} with metric ${metric}`
+      );
+
+      // Check if SeriesManager is available
+      if (typeof SeriesManager === 'undefined') {
+        console.warn('SeriesManager not available, skipping series data');
+        return;
+      }
+
+      // Create series manager if not already created
+      if (!this.seriesManager) {
+        this.seriesManager = new SeriesManager();
+      }
+
+      // Load player data
+      const playerData = await DataLoader.loadPlayerData(playerName);
+
+      if (!playerData || playerData.length === 0) {
+        console.warn(`No data found for player ${playerName}`);
+        return;
+      }
+
+      // Load series data
+      const seriesStats = await this.seriesManager.loadPlayerSeries(
+        playerName,
+        playerData
+      );
+
+      console.log(`Found ${seriesStats.length} series for ${playerName}`);
+
+      // Update series chart if available
+      if (window.seriesChartManagerInstance) {
+        window.seriesChartManagerInstance.updateChart(
+          playerName,
+          seriesStats,
+          metric
+        );
+      }
+
+      // Update series stats
+      this.updateSeriesStats(seriesStats, metric);
+    } catch (error) {
+      console.error('Error loading series data:', error);
+    }
+  }
+
+  /**
+   * Update series stats display
+   * @param {Array} seriesStats - Series statistics
+   * @param {string} metric - Metric to display
+   */
+  updateSeriesStats(seriesStats, metric) {
+    try {
+      // Check if series stats container exists
+      let seriesStatsContainer = document.getElementById(
+        'series-stats-container'
+      );
+
+      if (!seriesStatsContainer) {
+        // Create series stats container
+        seriesStatsContainer = document.createElement('div');
+        seriesStatsContainer.id = 'series-stats-container';
+        seriesStatsContainer.className = 'stats-summary';
+        seriesStatsContainer.style.marginTop = '20px';
+
+        // Add container to the page
+        const seriesChartContainer = document.getElementById(
+          'series-chart-container'
+        );
+        if (seriesChartContainer) {
+          seriesChartContainer.appendChild(seriesStatsContainer);
+        }
+      }
+
+      // Calculate average and max series stats
+      const avgSeriesMetric = d3.mean(seriesStats, (d) => d[metric]);
+      const maxSeriesMetric = d3.max(seriesStats, (d) => d[metric]);
+
+      // Create stats HTML
+      const statsHtml = `
+        <div class="stat">
+          <span>Avg ${metric} per series:</span>
+          <span class="highlight">${
+            avgSeriesMetric ? avgSeriesMetric.toFixed(1) : '--'
+          }</span>
+        </div>
+        <div class="stat">
+          <span>Max ${metric} in a series:</span>
+          <span class="highlight">${
+            maxSeriesMetric ? maxSeriesMetric.toFixed(0) : '--'
+          }</span>
+        </div>
+        <div class="stat">
+          <span>Total series:</span>
+          <span class="highlight">${seriesStats.length}</span>
+        </div>
+      `;
+
+      // Update container
+      seriesStatsContainer.innerHTML = statsHtml;
+
+      // Show container
+      seriesStatsContainer.style.display = 'flex';
+    } catch (error) {
+      console.error('Error updating series stats:', error);
     }
   }
 }
 window.ChartManager = ChartManager;
 
 // Initialize when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-  console.log('DOM loaded, initializing ChartManager...');
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    console.log('Initializing application...');
 
-  console.log(
-    'On performance.html, ChartManager will be initialized by tabInitializer.js'
-  );
+    // Show loading overlay
+    if (window.LoadingManager) {
+      LoadingManager.show('Loading LoL Esports data...');
+    }
+
+    // Use DataLoader directly instead of loadMatchData
+    await DataLoader.fetchCSVData();
+    console.log('CSV data loaded successfully');
+
+    // Initialize chart manager
+    window.chartManagerInstance = new ChartManager();
+    await window.chartManagerInstance.initialize();
+
+    // Initialize performance table
+    const performanceTable = new PerformanceTable(
+      '#performance-table-container'
+    );
+    await performanceTable.initialize();
+
+    // Initialize all-time stats
+    const allTimeStats = new AllTimeStats('#all-time-stats-container');
+    await allTimeStats.initialize();
+
+    // Hide loading overlay
+    if (window.LoadingManager) {
+      LoadingManager.hide();
+    }
+
+    console.log('Application initialized successfully');
+  } catch (error) {
+    console.error('Error initializing application:', error);
+
+    // Hide loading overlay and show error
+    if (window.LoadingManager) {
+      LoadingManager.hide();
+    }
+
+    // Show error message
+    const errorElement = document.createElement('div');
+    errorElement.className = 'data-error';
+    errorElement.innerHTML = `
+      <h3>Error Loading Data</h3>
+      <p>${error.message || 'An unexpected error occurred'}</p>
+    `;
+
+    document.body.appendChild(errorElement);
+  }
 });

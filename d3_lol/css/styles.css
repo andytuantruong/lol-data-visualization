@@ -226,6 +226,9 @@ input[type='number'].filter-select {
   display: flex;
   gap: 15px;
   flex-wrap: wrap;
+  width: 100%;
+  margin: 0 0 15px 0;
+  padding: 0;
 }
 
 .filter-select {
@@ -262,13 +265,17 @@ input[type='number'].filter-select {
 .filter-item {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  flex: 1;
+  min-width: 150px;
+  margin: 0;
+  padding: 0;
 }
 
 .filter-item label {
   font-size: 14px;
   font-weight: 500;
   color: #fff;
+  margin-bottom: 8px;
 }
 
 @media (max-width: 768px) {
@@ -277,7 +284,7 @@ input[type='number'].filter-select {
   }
 }
 
-/* Segmented Control Styles - Updated to match dropdown styles */
+/* Segmented Control Styles - Complete revision */
 .segmented-control {
   display: flex;
   position: relative;
@@ -287,6 +294,8 @@ input[type='number'].filter-select {
   width: 100%;
   border: 1px solid #3a3f58;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  margin: 0;
+  padding: 0;
 }
 
 .segmented-control .segment {
@@ -304,6 +313,7 @@ input[type='number'].filter-select {
   z-index: 2;
   font-family: 'Inter', sans-serif;
   outline: none;
+  margin: 0;
 }
 
 .segmented-control .segment:hover {
@@ -314,14 +324,19 @@ input[type='number'].filter-select {
 .segmented-control .segment.active {
   color: #ffffff;
   font-weight: 600;
-  background-color: rgba(76, 175, 80, 0.2);
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
-  transform: translateY(1px);
 }
 
-/* Remove the slider completely */
+/* Re-enable the slider */
 .segmented-control .slider {
-  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background-color: rgba(76, 175, 80, 0.2);
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  z-index: 1;
+  display: block;
 }
 
 .tab-content {
@@ -349,6 +364,7 @@ input[type='number'].filter-select {
 
 .performance-table-container .segmented-control {
   max-width: 300px;
+  width: 100%;
 }
 
 #player-chart .filter-item .segmented-control {
@@ -362,7 +378,8 @@ input[type='number'].filter-select {
   }
 
   .performance-table-container .segmented-control {
-    max-width: none;
+    max-width: 100%;
+    min-width: unset;
     width: 100%;
   }
 }
@@ -1008,10 +1025,11 @@ input[type='number'].filter-select {
   }
 }
 
-/* Game Count Control*/
+/* Game Count Control */
 .game-count-control {
   max-width: 280px;
   min-width: 200px;
+  width: 100%;
 }
 
 .game-count-control .segment {
@@ -1029,5 +1047,223 @@ input[type='number'].filter-select {
   .game-count-control .segment {
     padding: 8px 6px;
     font-size: 12px;
+  }
+}
+
+/* Series chart specific segmented control */
+#series-chart .segmented-control {
+  display: flex;
+  position: relative;
+  background-color: #1e2130;
+  border-radius: 6px;
+  overflow: hidden;
+  width: 100%;
+  border: 1px solid #3a3f58;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  margin: 0;
+  padding: 0;
+}
+
+#series-chart .segmented-control .segment {
+  flex: 1;
+  padding: 8px 12px;
+  text-align: center;
+  background: none;
+  border: none;
+  color: #a0a0a0;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  position: relative;
+  transition: all 0.2s ease;
+  z-index: 2;
+  font-family: 'Inter', sans-serif;
+  outline: none;
+  margin: 0;
+}
+
+#series-chart .segmented-control .segment:hover {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+#series-chart .segmented-control .segment.active {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+#series-chart .segmented-control .slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background-color: rgba(76, 175, 80, 0.2);
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  z-index: 1;
+  display: block;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .filter-group {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .filter-item {
+    width: 100%;
+  }
+
+  .game-count-control,
+  .performance-table-container .segmented-control {
+    max-width: 100%;
+    min-width: unset;
+    width: 100%;
+  }
+
+  .game-count-control .segment {
+    padding: 8px 6px;
+    font-size: 12px;
+  }
+}
+
+#series-chart-container {
+  width: 100%;
+  height: 600px;
+  margin-top: 10px;
+  position: relative;
+  background-color: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+#series-chart-container svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Series Chart loading indicator */
+#series-chart-container.loading::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  z-index: 10;
+}
+
+#series-chart-container.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  margin-top: -20px;
+  margin-left: -20px;
+  border: 4px solid #333;
+  border-top: 4px solid #4caf50;
+  border-radius: 50%;
+  z-index: 11;
+  animation: spin 1s linear infinite;
+}
+
+/* Series Chart styles to match Player Chart */
+#series-chart-container .bar {
+  transition: fill 0.3s ease;
+}
+
+#series-chart-container .bar:hover {
+  opacity: 0.8;
+}
+
+#series-chart-container .metric-label {
+  fill: white;
+  font-weight: 500;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+#series-chart-container .tooltip,
+.tooltip {
+  position: absolute;
+  padding: 10px 14px;
+  background: rgba(40, 44, 52, 0.95);
+  color: #fff;
+  border-radius: 4px;
+  pointer-events: none;
+  font-size: 13px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  max-width: 280px;
+  transition: opacity 0.2s ease;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transform: none;
+}
+
+#series-chart-container .tooltip .tooltip-header {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  padding-bottom: 4px;
+}
+
+#series-chart-container .tooltip .tooltip-date {
+  font-size: 12px;
+  color: #aaa;
+  margin-bottom: 6px;
+}
+
+#series-chart-container .tooltip .tooltip-series {
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+#series-chart-container .tooltip .tooltip-stats {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+}
+
+#series-chart-container .grid-lines line {
+  stroke: rgba(255, 255, 255, 0.1);
+}
+
+#series-chart-container .x-axis text,
+#series-chart-container .y-axis text {
+  fill: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+}
+
+#series-chart-container .x-axis path,
+#series-chart-container .y-axis path,
+#series-chart-container .x-axis line,
+#series-chart-container .y-axis line {
+  stroke: rgba(255, 255, 255, 0.2);
+}
+
+#series-chart-container .bar-overlay {
+  cursor: pointer;
+}
+
+/* Ensure the chart title is styled consistently */
+#series-chart-container .chart-title {
+  font-size: 16px;
+  font-weight: 500;
+  fill: #fff;
+}
+
+@media (max-width: 768px) {
+  #series-chart-container .chart-title {
+    font-size: 14px;
+  }
+
+  #series-chart-container .tooltip {
+    font-size: 12px;
+    padding: 8px 10px;
   }
 }

@@ -84,6 +84,30 @@ document.addEventListener('DOMContentLoaded', async function () {
       });
     }
 
+    console.log('Initializing Series Chart Manager...');
+    try {
+      // Create a new instance if one doesn't exist
+      if (!window.seriesChartManagerInstance) {
+        window.seriesChartManagerInstance = new SeriesChartManager();
+      }
+
+      // Initialize the instance
+      await window.seriesChartManagerInstance.initialize();
+      console.log('Series Chart Manager initialized successfully');
+    } catch (error) {
+      console.error('Error initializing Series Chart Manager:', error);
+      // Create a new instance as a fallback
+      window.seriesChartManagerInstance = new SeriesChartManager();
+      await window.seriesChartManagerInstance
+        .initialize()
+        .catch((innerError) => {
+          console.error(
+            'Error initializing fallback Series Chart Manager:',
+            innerError
+          );
+        });
+    }
+
     // Initialize Performance Table
     console.log('Initializing Performance Table...');
     const performanceTable = new PerformanceTable(
@@ -106,6 +130,14 @@ document.addEventListener('DOMContentLoaded', async function () {
     // Clear the player chart on page refresh
     if (window.chartManagerInstance && window.chartManagerInstance.resetChart) {
       window.chartManagerInstance.resetChart();
+    }
+
+    // Clear the series chart on page refresh
+    if (
+      window.seriesChartManagerInstance &&
+      window.seriesChartManagerInstance.reset
+    ) {
+      window.seriesChartManagerInstance.reset();
     }
 
     console.log('Application initialization complete');
@@ -136,293 +168,311 @@ document.addEventListener('DOMContentLoaded', async function () {
 });
 
 /**
- * Restores the active tab from localStorage
+ * Restore the active tab from localStorage
  */
 function restoreActiveTab() {
-  // First check if there's a saved tab
-  const savedTabId = localStorage.getItem('activeTab');
-
-  if (savedTabId) {
-    const savedTab = document.querySelector(`.tab[data-tab="${savedTabId}"]`);
-    if (savedTab) {
-      // Remove active class from all tabs and contents
-      const tabs = document.querySelectorAll('.tab');
-      const tabContents = document.querySelectorAll('.tab-content');
-
-      tabs.forEach((t) => t.classList.remove('active'));
-      tabContents.forEach((c) => c.classList.remove('active'));
-
-      // Activate the saved tab
-      savedTab.classList.add('active');
-      const tabContent = document.getElementById(savedTabId);
-      if (tabContent) {
-        tabContent.classList.add('active');
+  try {
+    const activeTab = localStorage.getItem('activeTab');
+    if (activeTab) {
+      const tabElement = document.querySelector(
+        `.tab[data-tab="${activeTab}"]`
+      );
+      if (tabElement) {
+        tabElement.click();
       }
-
-      console.log(`Restored active tab: ${savedTabId}`);
-      return;
     }
+  } catch (error) {
+    console.error('Error restoring active tab:', error);
   }
+}
 
-  // If no saved tab or saved tab not found, default to Recent Performance
-  const defaultTab = document.querySelector(
-    '.tab[data-tab="recent-performance"]'
-  );
-  if (defaultTab) {
-    // Remove active class from all tabs and contents
+/**
+ * Setup tab navigation
+ */
+function setupTabNavigation() {
+  try {
     const tabs = document.querySelectorAll('.tab');
     const tabContents = document.querySelectorAll('.tab-content');
 
-    tabs.forEach((t) => t.classList.remove('active'));
-    tabContents.forEach((c) => c.classList.remove('active'));
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => {
+        // Get the tab ID
+        const tabId = tab.getAttribute('data-tab');
 
-    // Activate the default tab
-    defaultTab.classList.add('active');
-    const tabContent = document.getElementById('recent-performance');
-    if (tabContent) {
-      tabContent.classList.add('active');
-    }
+        // Remove active class from all tabs and contents
+        tabs.forEach((t) => t.classList.remove('active'));
+        tabContents.forEach((content) => content.classList.remove('active'));
 
-    // Save this as the active tab
-    localStorage.setItem('activeTab', 'recent-performance');
-    console.log('No saved tab found, defaulted to Recent Performance');
-  }
-}
+        // Add active class to current tab and content
+        tab.classList.add('active');
+        const content = document.getElementById(tabId);
+        if (content) {
+          content.classList.add('active');
+        }
 
-/**
- * Sets up tab navigation and ensures the active tab content is visible
- */
-function setupTabNavigation() {
-  const tabs = document.querySelectorAll('.tab');
-  const tabContents = document.querySelectorAll('.tab-content');
+        // Store active tab in localStorage
+        localStorage.setItem('activeTab', tabId);
 
-  // Make sure the active tab content is visible
-  const activeTab = document.querySelector('.tab.active');
-  if (activeTab) {
-    const tabId = activeTab.getAttribute('data-tab');
-    const tabContent = document.getElementById(tabId);
-    if (tabContent) {
-      tabContent.classList.add('active');
-    }
-  }
-
-  // Remove existing event listeners
-  tabs.forEach((tab) => {
-    const newTab = tab.cloneNode(true);
-    tab.parentNode.replaceChild(newTab, tab);
-  });
-
-  // Add new event listeners
-  const newTabs = document.querySelectorAll('.tab');
-  newTabs.forEach((tab) => {
-    tab.addEventListener('click', () => {
-      // Remove active class from all tabs and contents
-      newTabs.forEach((t) => t.classList.remove('active'));
-      tabContents.forEach((c) => c.classList.remove('active'));
-
-      // Add active class to clicked tab and corresponding content
-      tab.classList.add('active');
-      const tabId = tab.getAttribute('data-tab');
-      const tabContent = document.getElementById(tabId);
-      if (tabContent) {
-        tabContent.classList.add('active');
-      }
-
-      // Save the active tab to localStorage
-      localStorage.setItem('activeTab', tabId);
-      console.log(`Saved active tab: ${tabId}`);
-
-      // Reposition sliders in the newly active tab
-      setTimeout(() => {
-        positionSliders(tabId);
-      }, 50);
-
-      // If switching to player chart tab, ensure chart is properly sized and stats are updated
-      if (tabId === 'player-chart' && window.chartManagerInstance) {
+        // Position sliders for the active tab
         setTimeout(() => {
-          if (
-            window.chartManagerInstance.chart &&
-            window.chartManagerInstance.chart.resize
-          ) {
-            window.chartManagerInstance.chart.resize();
-          }
+          positionSliders(tabId);
+        }, 100);
 
-          // If a player is already selected, update the chart and stats
-          if (window.chartManagerInstance.currentPlayer) {
-            window.chartManagerInstance.updateChart();
+        // Special handling for player chart tab
+        if (tabId === 'player-chart' && window.chartManagerInstance) {
+          // Resize chart when tab becomes active
+          setTimeout(() => {
+            if (window.chartManagerInstance.chart) {
+              window.chartManagerInstance.chart.resize();
+            }
+          }, 100);
+        }
 
-            // Ensure stats are updated even if chart data is cached
-            const playerName = window.chartManagerInstance.currentPlayer;
-            const metric = window.chartManagerInstance.currentMetric;
+        // Special handling for series chart tab
+        if (tabId === 'series-chart') {
+          // Ensure SeriesChartManager is initialized
+          if (window.seriesChartManagerInstance) {
+            // Resize chart when tab becomes active
+            setTimeout(() => {
+              if (window.seriesChartManagerInstance.chart) {
+                window.seriesChartManagerInstance.chart.resize();
+              }
 
-            if (playerName) {
-              console.log(
-                `Updating stats for ${playerName} with metric ${metric}`
+              // Position sliders for series chart
+              const metricControl = document.querySelector(
+                '#series-chart .segmented-control'
+              );
+              const seriesTypeControl = document.querySelector(
+                '.series-type-control'
               );
 
-              // Reload player data to ensure fresh stats calculation
-              DataLoader.loadPlayerData(playerName)
-                .then((playerData) => {
-                  if (playerData && playerData.length > 0) {
-                    window.chartManagerInstance.updateStats(playerData);
-                  }
-                })
-                .catch((error) => {
-                  console.error('Error updating stats on tab change:', error);
-                });
-            }
+              if (metricControl) {
+                positionSliders('#series-chart');
+              }
+            }, 100);
+          } else {
+            console.warn('SeriesChartManager instance not found');
           }
-
-          // Reposition slider in the player chart tab
-          if (window.chartManagerInstance.positionSlider) {
-            window.chartManagerInstance.positionSlider();
-          }
-        }, 100);
-      }
+        }
+      });
     });
-  });
+
+    console.log('Tab navigation setup complete');
+  } catch (error) {
+    console.error('Error setting up tab navigation:', error);
+  }
 }
 
 /**
- * Initialize sliders for all segmented controls on page load
+ * Initialize sliders for all segmented controls
  */
 function initializeSliders() {
   try {
     const segmentedControls = document.querySelectorAll('.segmented-control');
 
     segmentedControls.forEach((control) => {
-      const activeSegment = control.querySelector('.segment.active');
+      const segments = control.querySelectorAll('.segment');
       const slider = control.querySelector('.slider');
 
-      if (activeSegment && slider) {
-        // Set initial slider position and width
-        const rect = activeSegment.getBoundingClientRect();
-        const parentRect = control.getBoundingClientRect();
+      if (segments.length > 0 && slider) {
+        // Find active segment
+        let activeSegment = control.querySelector('.segment.active');
 
-        slider.style.width = rect.width + 'px';
-        slider.style.left = rect.left - parentRect.left + 'px';
+        // If no active segment, set first one as active
+        if (!activeSegment && segments.length > 0) {
+          segments[0].classList.add('active');
+          activeSegment = segments[0];
+        }
+
+        // Position slider based on active segment
+        if (activeSegment) {
+          slider.style.width = `${activeSegment.offsetWidth}px`;
+          slider.style.left = `${activeSegment.offsetLeft}px`;
+        }
       }
     });
 
-    console.log('All sliders initialized successfully');
+    console.log('Sliders initialized');
   } catch (error) {
     console.error('Error initializing sliders:', error);
   }
 }
 
 /**
- * Position sliders in a specific tab or all tabs
+ * Position sliders for segmented controls
+ * @param {string} tabId - Optional tab ID to position sliders for a specific tab
  */
 function positionSliders(tabId = null) {
   try {
-    let containers = [];
-
-    if (tabId) {
-      // Position sliders in the specified tab
-      const tabContent = document.getElementById(tabId);
-      if (tabContent) {
-        containers = [tabContent];
-      }
-    } else {
-      // Position sliders in all active tab contents
-      containers = document.querySelectorAll('.tab-content.active');
-    }
+    // If tabId is provided, only position sliders in that tab
+    // Otherwise, position sliders in all active tabs
+    const containers = tabId
+      ? [document.getElementById(tabId)]
+      : document.querySelectorAll('.tab-content.active');
 
     containers.forEach((container) => {
+      if (!container) return;
+
       const segmentedControls =
         container.querySelectorAll('.segmented-control');
 
       segmentedControls.forEach((control) => {
         const activeSegment = control.querySelector('.segment.active');
-        if (activeSegment) {
-          // Make sure only one segment is active
-          control.querySelectorAll('.segment').forEach((segment) => {
-            if (segment !== activeSegment) {
-              segment.classList.remove('active');
-            }
-          });
-          activeSegment.classList.add('active');
+        const slider = control.querySelector('.slider');
+
+        if (activeSegment && slider) {
+          slider.style.width = `${activeSegment.offsetWidth}px`;
+          slider.style.left = `${activeSegment.offsetLeft}px`;
         }
       });
     });
 
-    console.log(`Segments updated for ${tabId || 'all active tabs'}`);
+    console.log(`Updated segments for ${tabId || 'all active tabs'}`);
+
+    // Special handling for series chart
+    if (
+      (tabId === 'series-chart' || !tabId) &&
+      document.getElementById('series-chart').classList.contains('active')
+    ) {
+      if (window.seriesChartManagerInstance) {
+        // Position sliders for series chart
+        window.seriesChartManagerInstance.positionSlider(
+          '.series-metric-control'
+        );
+        window.seriesChartManagerInstance.positionSlider(
+          '.series-type-control'
+        );
+      }
+    }
   } catch (error) {
-    console.error('Error updating segments:', error);
+    console.error('Error positioning sliders:', error);
   }
 }
 
 /**
- * Sets up player link handlers to switch to chart tab when clicked
+ * Setup handlers for player links
  */
 function setupPlayerLinkHandlers() {
-  document.addEventListener('click', (event) => {
-    // Check if the clicked element is a player link
-    if (event.target && event.target.classList.contains('player-link')) {
-      event.preventDefault();
+  try {
+    // Add click handler for player links
+    document.addEventListener('click', (event) => {
+      // Check if the clicked element is a player link
+      if (event.target.classList.contains('player-link')) {
+        event.preventDefault();
 
-      const playerName = event.target.getAttribute('data-player');
-      const metric = event.target.getAttribute('data-metric') || 'kills';
+        const playerName = event.target.getAttribute('data-player');
+        const metric = event.target.getAttribute('data-metric') || 'kills';
+        const targetTab =
+          event.target.getAttribute('data-target-tab') || 'player-chart';
 
-      if (!playerName) {
-        console.warn('Player link clicked but no player attribute found');
-        return;
-      }
+        if (!playerName) {
+          console.warn('Player link clicked but no player attribute found');
+          return;
+        }
 
-      console.log(`Player link clicked: ${playerName}, metric: ${metric}`);
+        console.log(
+          `Player link clicked: ${playerName}, metric: ${metric}, target tab: ${targetTab}`
+        );
 
-      // Find player data from DataLoader directly
-      DataLoader.loadPlayerData(playerName)
-        .then((playerData) => {
-          if (playerData && playerData.length > 0) {
-            const sampleGame = playerData[0];
-            const league = sampleGame.league;
-            const team = sampleGame.teamname;
+        // Find player data from DataLoader directly
+        DataLoader.loadPlayerData(playerName)
+          .then((playerData) => {
+            if (playerData && playerData.length > 0) {
+              const sampleGame = playerData[0];
+              const league = sampleGame.league;
+              const team = sampleGame.teamname;
 
-            // Store selected values
-            localStorage.setItem('selectedLeague', league);
-            localStorage.setItem('selectedTeam', team);
-            localStorage.setItem('selectedPlayer', playerName);
-            localStorage.setItem('selectedMetric', metric);
+              // Store selected values
+              localStorage.setItem('selectedLeague', league);
+              localStorage.setItem('selectedTeam', team);
+              localStorage.setItem('selectedPlayer', playerName);
+              localStorage.setItem('selectedMetric', metric);
 
-            // Switch to player chart tab
-            const playerChartTab = document.querySelector(
-              '.tab[data-tab="player-chart"]'
-            );
-            if (playerChartTab) {
-              playerChartTab.click();
-            }
+              // Switch to target tab
+              const targetTabElement = document.querySelector(
+                `.tab[data-tab="${targetTab}"]`
+              );
+              if (targetTabElement) {
+                targetTabElement.click();
+              }
 
-            // Update chart if chart manager is available
-            if (window.chartManagerInstance) {
-              // Give the DOM time to update
-              setTimeout(() => {
-                window.chartManagerInstance.selectPlayer(
-                  playerName,
-                  team,
-                  league,
-                  metric
-                );
+              // Update chart based on target tab
+              if (targetTab === 'player-chart' && window.chartManagerInstance) {
+                // Give the DOM time to update
+                setTimeout(() => {
+                  window.chartManagerInstance.selectPlayer(
+                    playerName,
+                    team,
+                    league,
+                    metric
+                  );
+                }, 100);
+              } else if (
+                targetTab === 'series-chart' &&
+                window.seriesChartManagerInstance
+              ) {
+                // Handle series chart selection
+                setTimeout(() => {
+                  // Set league dropdown
+                  if (window.seriesChartManagerInstance.leagueDropdown) {
+                    window.seriesChartManagerInstance.leagueDropdown.value =
+                      league;
+                    window.seriesChartManagerInstance.currentLeague = league;
+                    window.seriesChartManagerInstance.populateTeamDropdown();
 
-                // Reposition slider after player selection
-                if (window.chartManagerInstance.positionSlider) {
-                  window.chartManagerInstance.positionSlider();
-                } else {
-                  positionSliders('player-chart');
-                }
-              }, 200);
+                    // Set team dropdown after a short delay to ensure teams are populated
+                    setTimeout(() => {
+                      if (window.seriesChartManagerInstance.teamDropdown) {
+                        window.seriesChartManagerInstance.teamDropdown.value =
+                          team;
+                        window.seriesChartManagerInstance.currentTeam = team;
+                        window.seriesChartManagerInstance.populatePlayerDropdown();
+
+                        // Set player dropdown after a short delay to ensure players are populated
+                        setTimeout(() => {
+                          if (
+                            window.seriesChartManagerInstance.playerDropdown
+                          ) {
+                            window.seriesChartManagerInstance.playerDropdown.value =
+                              playerName;
+                            window.seriesChartManagerInstance.currentPlayer =
+                              playerName;
+
+                            // Set metric if applicable
+                            const metricSegments = document.querySelectorAll(
+                              '.series-metric-control .segment'
+                            );
+                            metricSegments.forEach((segment) => {
+                              if (
+                                segment.getAttribute('data-value') === metric
+                              ) {
+                                segment.click();
+                              }
+                            });
+
+                            // Update chart
+                            window.seriesChartManagerInstance.updateChart();
+                          }
+                        }, 100);
+                      }
+                    }, 100);
+                  }
+                }, 200);
+              }
             } else {
-              console.error('ChartManager instance not available');
+              console.error('Could not load player data for:', playerName);
             }
-          } else {
-            console.error('Could not load player data:', playerName);
-          }
-        })
-        .catch((error) => {
-          console.error('Error loading player data:', error);
-        });
-    }
-  });
+          })
+          .catch((error) => {
+            console.error('Error loading player data:', error);
+          });
+      }
+    });
+
+    console.log('Player link handlers set up');
+  } catch (error) {
+    console.error('Error setting up player link handlers:', error);
+  }
 }
 
 // Add window resize event listener to reposition sliders

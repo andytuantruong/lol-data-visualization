@@ -41,6 +41,7 @@
         </button>
         <button class="tab" data-tab="all-time-stats">All-Time Stats</button>
         <button class="tab" data-tab="player-chart">Player Chart</button>
+        <button class="tab" data-tab="series-chart">Series Chart</button>
       </div>
 
       <div id="recent-performance" class="tab-content active">
@@ -137,14 +138,90 @@
           Error loading data. Please try again.
         </div>
       </div>
+
+      <div id="series-chart" class="tab-content">
+        <div class="player-stats">
+          <div class="stats-summary" id="series-stats-summary">
+            <div class="stat">
+              <span>Average per series:</span>
+              <span id="series-avg-value" class="highlight">--</span>
+            </div>
+            <div class="stat">
+              <span>Max in a series:</span>
+              <span id="series-max-value" class="highlight">--</span>
+            </div>
+            <div class="stat">
+              <span>Total series:</span>
+              <span id="series-count" class="highlight">--</span>
+            </div>
+          </div>
+        </div>
+        <div class="controls">
+          <div class="filter-group">
+            <div class="filter-item">
+              <label for="series-league-dropdown">League</label>
+              <select id="series-league-dropdown" class="filter-select">
+                <option value="">Select League...</option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <label for="series-team-dropdown">Team</label>
+              <select id="series-team-dropdown" class="filter-select" disabled>
+                <option value="">Select Team...</option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <label for="series-player-dropdown">Player</label>
+              <select
+                id="series-player-dropdown"
+                class="filter-select"
+                disabled
+              >
+                <option value="">Select Player...</option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <label>Metric:</label>
+              <div class="segmented-control series-metric-control">
+                <div class="slider"></div>
+                <button class="segment active" data-value="kills">Kills</button>
+                <button class="segment" data-value="deaths">Deaths</button>
+                <button class="segment" data-value="assists">Assists</button>
+              </div>
+            </div>
+            <div class="filter-item">
+              <label>Series Type:</label>
+              <div class="segmented-control series-type-control">
+                <div class="slider"></div>
+                <button class="segment active" data-value="all">All</button>
+                <button class="segment" data-value="bo1">Bo1</button>
+                <button class="segment" data-value="bo3">Bo3</button>
+                <button class="segment" data-value="bo5">Bo5</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="series-chart-container"></div>
+        <div
+          class="error-message"
+          id="series-error-message"
+          style="display: none"
+        >
+          Error loading series data. Please try again.
+        </div>
+      </div>
     </div>
 
+    <!-- Load scripts in the correct order -->
     <script src="js/dataLoader.js"></script>
+    <script src="js/loadingOverlay.js"></script>
     <script src="js/chart.js"></script>
+    <script src="js/seriesManager.js"></script>
+    <script src="js/seriesChart.js"></script>
+    <script src="js/seriesChartManager.js"></script>
     <script src="js/main.js"></script>
     <script src="js/performanceTable.js"></script>
     <script src="js/allTimeStats.js"></script>
-    <script src="js/loadingOverlay.js"></script>
     <script src="js/tabInitializer.js"></script>
   </body>
 </html>
