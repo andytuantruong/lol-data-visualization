@@ -1,0 +1,1269 @@
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    Arial, sans-serif;
+  background-color: #0a0a0a;
+  color: #ffffff;
+  margin: 0;
+  padding: 20px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.header {
+  margin-bottom: 20px;
+}
+
+.title-section {
+  margin-bottom: 20px;
+}
+
+.player-stats {
+  margin-bottom: 20px;
+}
+
+.player-stats h1 {
+  font-size: 1.8rem;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.stats-summary {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 15px;
+}
+
+.stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+}
+
+.highlight,
+.stat-value {
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.stat-box {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-label {
+  font-size: 1rem;
+  margin-right: 8px;
+}
+
+.controls {
+  margin-bottom: 20px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+@media (max-width: 1024px) {
+  .container {
+    padding: 15px;
+  }
+
+  #chart-container {
+    height: 550px;
+    padding: 15px;
+  }
+
+  .controls {
+    gap: 15px;
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 10px;
+  }
+
+  #chart-container {
+    height: 450px;
+    padding: 10px;
+  }
+
+  .controls {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .player-stats h1 {
+    font-size: 20px;
+  }
+
+  .stats-summary {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .stat {
+    font-size: 14px;
+  }
+
+  .highlight {
+    font-size: 16px;
+  }
+
+  .tooltip {
+    font-size: 11px;
+    padding: 8px;
+  }
+}
+
+svg {
+  width: 100%;
+  height: 100%;
+}
+
+.input-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#min-metric {
+  width: 60px;
+  padding: 8px 10px;
+  background-color: #1e2130;
+  border: 1px solid #3a3f58;
+  color: #ffffff;
+  border-radius: 6px;
+  font-size: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  font-family: 'Inter', sans-serif;
+}
+
+input[type='number'].filter-select {
+  width: 60px;
+  padding: 8px 10px;
+  background-color: #1e2130;
+  border: 1px solid #3a3f58;
+  color: #ffffff;
+  border-radius: 6px;
+  font-size: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  font-family: 'Inter', sans-serif;
+}
+
+#chart-container {
+  width: 100%;
+  height: 600px;
+  margin-top: 10px;
+  position: relative;
+  background-color: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.bar {
+  transition: opacity 0.2s;
+}
+
+.bar:hover {
+  opacity: 0.8;
+}
+
+.metric-label {
+  fill: #fff;
+  font-size: 12px;
+}
+
+.tooltip {
+  position: fixed;
+  padding: 12px;
+  background: #242424;
+  border: 1px solid #333;
+  border-radius: 4px;
+  pointer-events: none;
+  font-size: 12px;
+  color: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  white-space: nowrap;
+  max-width: 90vw;
+  box-sizing: border-box;
+}
+
+.grid-lines line {
+  stroke: rgba(255, 255, 255, 0.3);
+}
+
+.x-axis text,
+.y-axis text {
+  fill: #fff;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.x-axis path,
+.y-axis path,
+.x-axis line,
+.y-axis line {
+  stroke: #fff;
+}
+
+.bar-overlay {
+  cursor: pointer;
+}
+
+.filter-group {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+  width: 100%;
+  margin: 0 0 15px 0;
+  padding: 0;
+}
+
+.filter-select {
+  width: 100%;
+  padding: 8px 12px;
+  background-color: #1e2130;
+  border: 1px solid #3a3f58;
+  color: #ffffff;
+  border-radius: 6px;
+  font-size: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.filter-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .filter-group {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .filter-select {
+    width: 100%;
+    min-width: unset;
+  }
+}
+
+.filter-item {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 150px;
+  margin: 0;
+  padding: 0;
+}
+
+.filter-item label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+  margin-bottom: 8px;
+}
+
+@media (max-width: 768px) {
+  .filter-item label {
+    font-size: 13px;
+  }
+}
+
+/* Segmented Control Styles - Complete revision */
+.segmented-control {
+  display: flex;
+  position: relative;
+  background-color: #1e2130;
+  border-radius: 6px;
+  overflow: hidden;
+  width: 100%;
+  border: 1px solid #3a3f58;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  margin: 0;
+  padding: 0;
+}
+
+.segmented-control .segment {
+  flex: 1;
+  padding: 8px 12px;
+  text-align: center;
+  background: none;
+  border: none;
+  color: #a0a0a0;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  position: relative;
+  transition: all 0.2s ease;
+  z-index: 2;
+  font-family: 'Inter', sans-serif;
+  outline: none;
+  margin: 0;
+}
+
+.segmented-control .segment:hover {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.segmented-control .segment.active {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* Re-enable the slider */
+.segmented-control .slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background-color: rgba(76, 175, 80, 0.2);
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  z-index: 1;
+  display: block;
+}
+
+.tab-content {
+  position: relative;
+}
+
+.metric-filter-container {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 15px;
+  width: 100%;
+}
+
+.metric-filter-container label {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 5px;
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+}
+
+.metric-filter {
+  width: 100%;
+}
+
+.performance-table-container .segmented-control {
+  max-width: 300px;
+  width: 100%;
+}
+
+#player-chart .filter-item .segmented-control {
+  width: 100%;
+  max-width: none;
+}
+
+@media (max-width: 768px) {
+  .metric-filter-container {
+    width: 100%;
+  }
+
+  .performance-table-container .segmented-control {
+    max-width: 100%;
+    min-width: unset;
+    width: 100%;
+  }
+}
+
+/* Performance Table Styles */
+.performance-table-container {
+  width: 100%;
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  padding: 20px;
+  box-sizing: border-box;
+  overflow: auto;
+  margin-top: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.table-controls {
+  margin-bottom: 20px;
+}
+
+.metric-filter-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.metric-filter-container label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.metric-filter {
+  width: 300px;
+  height: 34px;
+}
+
+.metric-filter .slider {
+  width: 25%; /* 4 segments (All, Kills, Deaths, Assists) */
+  transition: transform 0.3s ease;
+}
+
+.metric-filter .segment {
+  flex: 1;
+  padding: 0 8px;
+  z-index: 2; /* Ensure segments are above the slider */
+}
+
+.performance-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  color: #fff;
+  font-size: 14px;
+  table-layout: fixed;
+}
+
+.performance-table thead {
+  background-color: #242424;
+}
+
+.performance-table th {
+  padding: 12px 8px;
+  text-align: center;
+  font-weight: 600;
+  border-bottom: 2px solid #333;
+  position: sticky;
+  top: 0;
+  background-color: #242424;
+  z-index: 10;
+  white-space: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+/* Column widths */
+.performance-table th:nth-child(1) {
+  width: 15%;
+  text-align: left;
+} /* Player */
+.performance-table th:nth-child(2) {
+  width: 10%;
+  text-align: left;
+} /* Team */
+.performance-table th:nth-child(3) {
+  width: 8%;
+} /* Metric */
+.performance-table th:nth-child(4) {
+  width: 6%;
+} /* Avg */
+.performance-table th:nth-child(5) {
+  width: 6%;
+} /* Prop */
+.performance-table th:nth-child(6),
+.performance-table th:nth-child(7),
+.performance-table th:nth-child(8),
+.performance-table th:nth-child(9) {
+  width: 8%;
+} /* L3, L5, L10, Current Year */
+.performance-table th:nth-child(10) {
+  width: 9%;
+} /* All-Time - give it more space */
+.performance-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #333;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.performance-table td:nth-child(1),
+.performance-table td:nth-child(2) {
+  text-align: left;
+}
+
+.performance-table .data-row {
+  transition: background-color 0.2s;
+}
+
+.performance-table .data-row:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.performance-table .player-metric {
+  font-weight: 500;
+  text-align: center;
+}
+
+.performance-table .sortable {
+  cursor: pointer;
+  position: relative;
+}
+
+.performance-table .sortable:hover {
+  background-color: #2a2a2a;
+}
+
+.performance-table .sort-icon {
+  display: inline-block;
+  margin-left: 5px;
+  color: #4caf50;
+  font-size: 12px;
+}
+
+.performance-table .l3-percentage,
+.performance-table .l5-percentage,
+.performance-table .l10-percentage,
+.performance-table .h2h-percentage,
+.performance-table .current-year-percentage,
+.performance-table .all-time-percentage {
+  text-align: center;
+  font-weight: normal;
+  transition: none;
+  background-color: transparent;
+  color: inherit;
+}
+
+@media (min-width: 1400px) {
+  /* Styles for large screens/fullscreen mode */
+  .performance-table {
+    font-size: 14px;
+  }
+
+  .performance-table th {
+    padding: 12px 10px;
+  }
+
+  /* Adjust column widths for larger screens */
+  .performance-table th:nth-child(1) {
+    width: 14%;
+  }
+  .performance-table th:nth-child(2) {
+    width: 9%;
+  }
+  .performance-table th:nth-child(3) {
+    width: 7%;
+  }
+  .performance-table th:nth-child(4),
+  .performance-table th:nth-child(5) {
+    width: 6%;
+  }
+  .performance-table th:nth-child(6),
+  .performance-table th:nth-child(7),
+  .performance-table th:nth-child(8),
+  .performance-table th:nth-child(9) {
+    width: 8%;
+  }
+  .performance-table th:nth-child(10) {
+    width: 8%;
+  }
+}
+
+.performance-table td.over-performance,
+.performance-table td.under-performance {
+  background-color: transparent;
+}
+
+/* Current Year and All-Time Percentage Columns */
+.performance-table .current-year-percentage,
+.performance-table .all-time-percentage {
+  text-align: center;
+  font-weight: normal;
+}
+
+/* Responsive styles for the performance table */
+@media (max-width: 1200px) {
+  .performance-table {
+    font-size: 13px;
+  }
+
+  .performance-table th,
+  .performance-table td {
+    padding: 10px 6px;
+  }
+}
+
+@media (max-width: 992px) {
+  .performance-table {
+    font-size: 12px;
+  }
+
+  .performance-table th,
+  .performance-table td {
+    padding: 8px 4px;
+  }
+}
+
+@media (max-width: 768px) {
+  .performance-table-container {
+    padding: 15px 10px;
+  }
+
+  .performance-table {
+    font-size: 11px;
+  }
+
+  .performance-table th,
+  .performance-table td {
+    padding: 6px 3px;
+  }
+
+  /* Hide less important columns on mobile */
+  .performance-table th:nth-child(6),
+  .performance-table td:nth-child(6),
+  .performance-table th:nth-child(7),
+  .performance-table td:nth-child(7) {
+    display: none;
+  }
+}
+
+@media (max-width: 576px) {
+  .performance-table th:nth-child(8),
+  .performance-table td:nth-child(8) {
+    display: none;
+  }
+}
+
+/* Row highlight effect */
+.performance-table .data-row:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Prop value styling */
+.prop-value {
+  font-weight: 500;
+  text-align: center;
+}
+
+/* Player link styling */
+.player-link {
+  color: #4caf50;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.player-link:hover {
+  color: #81c784;
+  text-decoration: underline;
+}
+
+.metric-name {
+  color: #ccc;
+  font-weight: 500;
+}
+
+/* Tab content transitions */
+.tab-content {
+  transition: opacity 0.3s ease;
+  opacity: 0;
+  display: none;
+}
+
+.tab-content.active {
+  opacity: 1;
+  display: block;
+}
+
+/* Tab Navigation */
+.tab-navigation {
+  display: flex;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #333;
+}
+
+.tab {
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  color: #999;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.3s;
+}
+
+.tab.active {
+  color: #fff;
+}
+
+.tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: #4caf50;
+}
+
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .performance-table {
+    font-size: 12px;
+  }
+
+  .performance-table th,
+  .performance-table td {
+    padding: 8px 10px;
+  }
+
+  .tab {
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+}
+
+.navigation-links {
+  display: flex;
+  margin-bottom: 20px;
+  gap: 20px;
+}
+
+.nav-link {
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  color: #999;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.3s;
+  text-decoration: none;
+}
+
+.nav-link.active {
+  color: #fff;
+}
+
+.nav-link.active::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: #4caf50;
+}
+
+.nav-link:hover:not(.active) {
+  color: #ccc;
+}
+
+@media (max-width: 768px) {
+  .navigation-links {
+    gap: 10px;
+  }
+
+  .nav-link {
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+}
+
+/* Loading Overlay Styles */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.loading-spinner {
+  border: 5px solid #333;
+  border-top: 5px solid #4caf50;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-message {
+  color: white;
+  font-size: 18px;
+  text-align: center;
+  max-width: 80%;
+}
+
+/* Data Error Message Styles */
+.data-error {
+  background-color: rgba(255, 82, 82, 0.1);
+  border: 1px solid #ff5252;
+  border-radius: 4px;
+  padding: 15px;
+  margin: 20px 0;
+  display: none;
+}
+
+.data-error h3 {
+  color: #ff5252;
+  margin-top: 0;
+}
+
+.data-error p {
+  margin-bottom: 10px;
+}
+
+.data-error ul {
+  margin-bottom: 10px;
+}
+
+.data-error .file-format {
+  background-color: rgba(0, 0, 0, 0.1);
+  padding: 10px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 12px;
+  margin-top: 10px;
+  white-space: pre-wrap;
+}
+
+/* Pagination Controls */
+.pagination-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 15px;
+  padding: 10px;
+  background-color: #1e1e2e;
+  border-radius: 6px;
+  border: 1px solid #3a3a4a;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.page-size-container {
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  margin-right: auto;
+}
+
+.page-size-container span {
+  margin-right: 10px;
+  white-space: nowrap;
+}
+
+.page-size-select {
+  background-color: #2a2a3a;
+  color: #fff;
+  border: 1px solid #3a3a4a;
+  border-radius: 4px;
+  padding: 5px 10px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.page-size-select:hover {
+  background-color: #3a3a4a;
+}
+
+.page-nav-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 auto;
+}
+
+.page-indicator {
+  margin: 0 10px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.page-nav-button {
+  background-color: #2a2a3a;
+  color: #fff;
+  border: 1px solid #3a3a4a;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 80px;
+}
+
+.page-nav-button:hover:not(:disabled) {
+  background-color: #3a3a4a;
+}
+
+.page-nav-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.item-range-display {
+  font-size: 14px;
+  color: #aaa;
+  white-space: nowrap;
+  margin-left: auto;
+}
+
+@media (max-width: 768px) {
+  .pagination-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 15px;
+  }
+
+  .page-size-container,
+  .page-nav-container {
+    justify-content: center;
+    width: 100%;
+    margin: 0;
+  }
+
+  .item-range-display {
+    text-align: center;
+    order: -1;
+    margin: 0;
+  }
+
+  .page-size-select {
+    flex-grow: 0;
+    min-width: 80px;
+  }
+}
+
+@media (max-width: 576px) {
+  .page-nav-button {
+    min-width: 60px;
+    padding: 6px 8px;
+    font-size: 13px;
+  }
+
+  .page-indicator {
+    font-size: 13px;
+    margin: 0 5px;
+  }
+}
+
+/* Checkbox filter styles */
+.checkbox-filter {
+  margin-top: 10px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+}
+
+.checkbox-label input[type='checkbox'] {
+  margin-right: 8px;
+  width: 16px;
+  height: 16px;
+  accent-color: #4caf50;
+  cursor: pointer;
+}
+
+.checkbox-label span {
+  user-select: none;
+}
+
+@media (max-width: 768px) {
+  .checkbox-label {
+    font-size: 13px;
+  }
+
+  .checkbox-label input[type='checkbox'] {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+/* Game Count Control */
+.game-count-control {
+  max-width: 280px;
+  min-width: 200px;
+  width: 100%;
+}
+
+.game-count-control .segment {
+  padding: 8px 10px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .game-count-control {
+    max-width: 100%;
+    min-width: unset;
+  }
+
+  .game-count-control .segment {
+    padding: 8px 6px;
+    font-size: 12px;
+  }
+}
+
+/* Series chart specific segmented control */
+#series-chart .segmented-control {
+  display: flex;
+  position: relative;
+  background-color: #1e2130;
+  border-radius: 6px;
+  overflow: hidden;
+  width: 100%;
+  border: 1px solid #3a3f58;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  margin: 0;
+  padding: 0;
+}
+
+#series-chart .segmented-control .segment {
+  flex: 1;
+  padding: 8px 12px;
+  text-align: center;
+  background: none;
+  border: none;
+  color: #a0a0a0;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  position: relative;
+  transition: all 0.2s ease;
+  z-index: 2;
+  font-family: 'Inter', sans-serif;
+  outline: none;
+  margin: 0;
+}
+
+#series-chart .segmented-control .segment:hover {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+#series-chart .segmented-control .segment.active {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+#series-chart .segmented-control .slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background-color: rgba(76, 175, 80, 0.2);
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  z-index: 1;
+  display: block;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .filter-group {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .filter-item {
+    width: 100%;
+  }
+
+  .game-count-control,
+  .performance-table-container .segmented-control {
+    max-width: 100%;
+    min-width: unset;
+    width: 100%;
+  }
+
+  .game-count-control .segment {
+    padding: 8px 6px;
+    font-size: 12px;
+  }
+}
+
+#series-chart-container {
+  width: 100%;
+  height: 600px;
+  margin-top: 10px;
+  position: relative;
+  background-color: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+#series-chart-container svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Series Chart loading indicator */
+#series-chart-container.loading::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  z-index: 10;
+}
+
+#series-chart-container.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  margin-top: -20px;
+  margin-left: -20px;
+  border: 4px solid #333;
+  border-top: 4px solid #4caf50;
+  border-radius: 50%;
+  z-index: 11;
+  animation: spin 1s linear infinite;
+}
+
+/* Series Chart styles to match Player Chart */
+#series-chart-container .bar {
+  transition: fill 0.3s ease;
+}
+
+#series-chart-container .bar:hover {
+  opacity: 0.8;
+}
+
+#series-chart-container .metric-label {
+  fill: white;
+  font-weight: 500;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+#series-chart-container .tooltip,
+.tooltip {
+  position: absolute;
+  padding: 10px 14px;
+  background: rgba(40, 44, 52, 0.95);
+  color: #fff;
+  border-radius: 4px;
+  pointer-events: none;
+  font-size: 13px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  max-width: 280px;
+  transition: opacity 0.2s ease;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transform: none;
+}
+
+#series-chart-container .tooltip .tooltip-header {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  padding-bottom: 4px;
+}
+
+#series-chart-container .tooltip .tooltip-date {
+  font-size: 12px;
+  color: #aaa;
+  margin-bottom: 6px;
+}
+
+#series-chart-container .tooltip .tooltip-series {
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+#series-chart-container .tooltip .tooltip-stats {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+}
+
+#series-chart-container .grid-lines line {
+  stroke: rgba(255, 255, 255, 0.1);
+}
+
+#series-chart-container .x-axis text,
+#series-chart-container .y-axis text {
+  fill: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+}
+
+#series-chart-container .x-axis path,
+#series-chart-container .y-axis path,
+#series-chart-container .x-axis line,
+#series-chart-container .y-axis line {
+  stroke: rgba(255, 255, 255, 0.2);
+}
+
+#series-chart-container .bar-overlay {
+  cursor: pointer;
+}
+
+/* Ensure the chart title is styled consistently */
+#series-chart-container .chart-title {
+  font-size: 16px;
+  font-weight: 500;
+  fill: #fff;
+}
+
+@media (max-width: 768px) {
+  #series-chart-container .chart-title {
+    font-size: 14px;
+  }
+
+  #series-chart-container .tooltip {
+    font-size: 12px;
+    padding: 8px 10px;
+  }
+}

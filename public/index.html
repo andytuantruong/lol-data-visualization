@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>LoL Dashboard</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📊</text></svg>"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css"
+    />
+    <link rel="stylesheet" href="/css/styles.css" />
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="loading-overlay" class="loading-overlay">
+      <div class="loading-spinner"></div>
+      <div class="loading-message">Loading LoL Esports data...</div>
+    </div>
+
+    <div class="container">
+      <div class="header">
+        <div class="title-section">
+          <h1>
+            <span class="stat-icon">📊</span>
+            LoL Esports Performance Dashboard
+          </h1>
+        </div>
+      </div>
+
+      <div class="tab-navigation">
+        <button class="tab" data-tab="player-chart">Player Chart</button>
+        <button class="tab" data-tab="series-chart">Series Chart</button>
+        <button class="tab" data-tab="recent-performance">
+          Recent Performance
+        </button>
+        <button class="tab" data-tab="all-time-stats">All-Time Stats</button>
+      </div>
+
+      <div id="player-chart" class="tab-content active">
+        <div class="player-stats">
+          <div class="stats-summary">
+            <div class="stat">
+              <span>Average:</span>
+              <span id="avg-value" class="highlight">--</span>
+            </div>
+            <div class="stat">
+              <span>Median:</span>
+              <span id="median-value" class="highlight">--</span>
+            </div>
+          </div>
+        </div>
+        <div class="controls">
+          <div class="filter-group">
+            <div class="filter-item">
+              <label for="league-dropdown">League</label>
+              <select id="league-dropdown" class="filter-select">
+                <option value="">Select League...</option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <label for="team-dropdown">Team</label>
+              <select id="team-dropdown" class="filter-select" disabled>
+                <option value="">Select Team...</option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <label for="player-dropdown">Player</label>
+              <select id="player-dropdown" class="filter-select" disabled>
+                <option value="">Select Player...</option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <label>Metric:</label>
+              <div class="segmented-control">
+                <div class="slider"></div>
+                <button class="segment active" data-value="kills">Kills</button>
+                <button class="segment" data-value="deaths">Deaths</button>
+                <button class="segment" data-value="assists">Assists</button>
+              </div>
+            </div>
+            <div class="filter-item">
+              <label>Game Count:</label>
+              <div class="segmented-control game-count-control">
+                <div class="slider"></div>
+                <button class="segment active" data-value="all">All</button>
+                <button class="segment" data-value="last5">Last 5</button>
+                <button class="segment" data-value="last10">Last 10</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="chart-container"></div>
+        <div class="error-message" id="chart-error" style="display: none">
+          Error loading data. Please try again.
+        </div>
+      </div>
+
+      <div id="series-chart" class="tab-content">
+        <div class="player-stats">
+          <div class="stats-summary" id="series-stats-summary">
+            <div class="stat">
+              <span>Average per series:</span>
+              <span id="series-avg-value" class="highlight">--</span>
+            </div>
+            <div class="stat">
+              <span>Max in a series:</span>
+              <span id="series-max-value" class="highlight">--</span>
+            </div>
+            <div class="stat">
+              <span>Total series:</span>
+              <span id="series-count" class="highlight">--</span>
+            </div>
+          </div>
+        </div>
+        <div class="controls">
+          <div class="filter-group">
+            <div class="filter-item">
+              <label for="series-league-dropdown">League</label>
+              <select id="series-league-dropdown" class="filter-select">
+                <option value="">Select League...</option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <label for="series-team-dropdown">Team</label>
+              <select id="series-team-dropdown" class="filter-select" disabled>
+                <option value="">Select Team...</option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <label for="series-player-dropdown">Player</label>
+              <select
+                id="series-player-dropdown"
+                class="filter-select"
+                disabled
+              >
+                <option value="">Select Player...</option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <label>Metric:</label>
+              <div class="segmented-control series-metric-control">
+                <div class="slider"></div>
+                <button class="segment active" data-value="kills">Kills</button>
+                <button class="segment" data-value="deaths">Deaths</button>
+                <button class="segment" data-value="assists">Assists</button>
+              </div>
+            </div>
+            <div class="filter-item">
+              <label>Series Type:</label>
+              <div class="segmented-control series-type-control">
+                <div class="slider"></div>
+                <button class="segment active" data-value="all">All</button>
+                <button class="segment" data-value="bo1">Bo1</button>
+                <button class="segment" data-value="bo3">Bo3</button>
+                <button class="segment" data-value="bo5">Bo5</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="series-chart-container"></div>
+        <div
+          class="error-message"
+          id="series-error-message"
+          style="display: none"
+        >
+          Error loading series data. Please try again.
+        </div>
+      </div>
+
+      <div id="recent-performance" class="tab-content">
+        <div
+          id="performance-table-container"
+          class="performance-table-container"
+        ></div>
+      </div>
+
+      <div id="all-time-stats" class="tab-content">
+        <div id="all-time-stats-container" class="performance-table-container">
+          <div class="table-controls">
+            <div class="metric-filter-container">
+              <label>Filter by Year: </label>
+              <select id="all-time-year-filter" class="filter-select">
+                <option value="all">All Years</option>
+              </select>
+            </div>
+          </div>
+          <table class="performance-table" id="all-time-table">
+            <thead>
+              <tr>
+                <th class="sortable" data-column="player">Player</th>
+                <th>Team</th>
+                <th class="sortable" data-column="year">Year</th>
+                <th class="sortable" data-column="games">Games</th>
+                <th class="sortable" data-column="winRate">Win %</th>
+                <th class="sortable" data-column="avgKills">Avg Kills</th>
+                <th class="sortable" data-column="avgDeaths">Avg Deaths</th>
+                <th class="sortable" data-column="avgAssists">Avg Assists</th>
+                <th class="sortable" data-column="kda">KDA</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Load scripts in the correct order -->
+    <script src="/js/dataLoader.js"></script>
+    <script src="/js/loadingOverlay.js"></script>
+    <script src="/js/chart.js"></script>
+    <script src="/js/seriesManager.js"></script>
+    <script src="/js/seriesChart.js"></script>
+    <script src="/js/seriesChartManager.js"></script>
+    <script src="/js/main.js"></script>
+    <script src="/js/performanceTable.js"></script>
+    <script src="/js/allTimeStats.js"></script>
+    <script src="/js/tabInitializer.js"></script>
+  </body>
+</html>
