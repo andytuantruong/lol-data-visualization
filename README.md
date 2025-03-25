@@ -14,6 +14,17 @@ A responsive web dashboard for visualizing League of Legends professional player
 
 This interactive tool allows users to analyze player performance through various metrics, including kills, deaths, and assists. <br> The dashboard features multiple views: Player Chart, Series Chart, Recent Performance, and All-Time Stats, enabling comprehensive analysis of player data across different timeframes and match formats.
 
+## Tech Stack
+
+- **Frontend**: HTML, CSS, JavaScript
+- **Data Visualization**: D3.js
+- **UI Components**: Choices.js
+- **Data Processing**: Python w/ Pandas
+- **Deployment**: Vercel
+- **Data Format**: CSV
+- **Version Control**: Git
+- **ETL Pipeline**: Custom Python scripts
+
 ## Usage
 
 To run the dashboard locally:
