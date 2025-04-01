@@ -14,30 +14,26 @@ class DataLoader {
       return this.csvData;
     }
 
-    const cleanedData = '/data/cleaned_data.csv';
-
     try {
-      console.log(`Attempting to load CSV from: ${cleanedData}`);
-      const response = await fetch(cleanedData);
+      const cleanedData = './data/cleaned_data.csv';
+      console.log('Current location:', window.location.href);
+      console.log('Attempting to load:', cleanedData);
 
-      if (response.ok) {
-        this.csvData = await response.text();
-        this.usedPath = cleanedData;
-        console.log(`Successfully loaded CSV from: ${cleanedData}`);
-        return this.csvData;
-      } else {
-        console.error(
-          `Failed to load CSV: ${response.status} ${response.statusText}`
-        );
-        throw new Error(
-          `Failed to load data from ${cleanedData}. Server returned: ${response.status} ${response.statusText}`
-        );
+      const response = await fetch(cleanedData);
+      console.log('Response status:', response.status);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-    } catch (e) {
-      console.error(`Error loading CSV from ${cleanedData}:`, e.message);
-      throw new Error(
-        `Failed to load data from ${cleanedData}. Please check that the file exists and is accessible.`
-      );
+
+      const data = await response.text();
+      console.log('Data loaded, first 100 chars:', data.substring(0, 100));
+      this.csvData = data;
+      this.usedPath = cleanedData;
+      return data;
+    } catch (error) {
+      console.error('Detailed error:', error);
+      throw error;
     }
   }
 
@@ -227,4 +223,90 @@ class DataLoader {
       throw error;
     }
   }
+
+  static async getLeagues() {
+    try {
+      const csvData = await this.fetchCSVData();
+      const data = d3.csvParse(csvData);
+      const leagues = [...new Set(data.map((d) => d.league))]
+        .filter(Boolean)
+        .sort();
+      console.log('Available leagues:', leagues);
+      return leagues;
+    } catch (error) {
+      console.error('Error getting leagues:', error);
+      return [];
+    }
+  }
+
+  static async getTeamsForLeague(league) {
+    try {
+      const csvData = await this.fetchCSVData();
+      const data = d3.csvParse(csvData);
+      const teams = [
+        ...new Set(
+          data.filter((d) => d.league === league).map((d) => d.teamname)
+        ),
+      ]
+        .filter(Boolean)
+        .sort();
+      console.log(`Teams for ${league}:`, teams);
+      return teams;
+    } catch (error) {
+      console.error(`Error getting teams for league ${league}:`, error);
+      return [];
+    }
+  }
+
+  static async getPlayersForTeam(league, team) {
+    try {
+      const csvData = await this.fetchCSVData();
+      const data = d3.csvParse(csvData);
+      const players = [
+        ...new Set(
+          data
+            .filter((d) => d.league === league && d.teamname === team)
+            .map((d) => d.playername)
+        ),
+      ]
+        .filter(Boolean)
+        .sort();
+      console.log(`Players for ${team} in ${league}:`, players);
+      return players;
+    } catch (error) {
+      console.error(`Error getting players for team ${team}:`, error);
+      return [];
+    }
+  }
+
+  static async getPlayerStats(playerName, league, team) {
+    try {
+      const csvData = await this.fetchCSVData();
+      const data = d3.csvParse(csvData);
+      const playerStats = data
+        .filter(
+          (d) =>
+            d.playername === playerName &&
+            d.league === league &&
+            d.teamname === team
+        )
+        .map((d) => ({
+          date: new Date(d.date),
+          kills: +d.kills,
+          deaths: +d.deaths,
+          assists: +d.assists,
+          result: +d.result,
+        }))
+        .sort((a, b) => a.date - b.date);
+
+      console.log(`Found ${playerStats.length} matches for ${playerName}`);
+      return playerStats;
+    } catch (error) {
+      console.error(`Error getting stats for player ${playerName}:`, error);
+      return [];
+    }
+  }
 }
+
+// Make DataLoader available globally
+window.DataLoader = DataLoader;

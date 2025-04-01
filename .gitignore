@@ -2,3 +2,5 @@
 *.txt
 __pycache__
 .vercel
+.env
+!public/data/cleaned_data.csv
