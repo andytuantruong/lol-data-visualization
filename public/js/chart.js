@@ -145,7 +145,28 @@ class MetricsChart {
     return gamesOnSameDay.length > 1 ? ` (${index + 1})` : '';
   }
 
-  update(data, playerName, metric) {
+  applyGameCount(data, gameCount) {
+    // If no data, return empty array
+    if (!data || data.length === 0) return data;
+
+    // If 'all' is specified, return all data
+    if (gameCount === 'all') {
+      return data;
+    }
+
+    // Sort data by date in descending order (newest first)
+    const sortedData = [...data].sort((a, b) => b.date - a.date);
+
+    // If no gameCount specified, default to 10 or total games if less
+    const count = gameCount
+      ? parseInt(gameCount, 10)
+      : Math.min(10, sortedData.length);
+
+    // Return the last N games
+    return sortedData.slice(0, count).sort((a, b) => a.date - b.date);
+  }
+
+  update(data, playerName, metric, gameCount) {
     try {
       console.log(`Updating chart for ${playerName} with metric ${metric}`);
 
@@ -153,6 +174,9 @@ class MetricsChart {
       this.currentData = data;
       this.currentPlayerName = playerName;
       this.currentMetric = metric;
+
+      // Apply game count filter with default value if not specified
+      const filteredData = this.applyGameCount(data, gameCount || '10');
 
       // Check if container is visible
       const containerNode = this.container.node();
@@ -191,14 +215,15 @@ class MetricsChart {
       const y = d3.scaleLinear().range([this.height, 0]);
 
       // Sort chart data by date and time
-      data.sort((a, b) => a.date.getTime() - b.date.getTime());
+      filteredData.sort((a, b) => a.date.getTime() - b.date.getTime());
 
       x.domain(
-        data.map(
-          (d) => this.formatDate(d.date) + this.getGameNumber(d.date, data)
+        filteredData.map(
+          (d) =>
+            this.formatDate(d.date) + this.getGameNumber(d.date, filteredData)
         )
       );
-      const maxValue = d3.max(data, (d) => d[metric]);
+      const maxValue = d3.max(filteredData, (d) => d[metric]);
       y.domain([0, Math.ceil(maxValue + 1)]);
 
       // Adjust font sizes based on screen width
@@ -212,16 +237,53 @@ class MetricsChart {
         .attr('class', 'x-axis')
         .attr('transform', `translate(0,${this.height})`);
 
+      // Calculate number of ticks based on width and data length
+      const shouldShowLabels = filteredData.length <= 60;
+      const tickCount = Math.min(10, filteredData.length); // Always calculate tick count
+
       xAxis
         .merge(xAxisEnter)
         .transition()
         .duration(750)
         .attr('transform', `translate(0,${this.height})`)
-        .call(d3.axisBottom(x));
+        .call(
+          d3
+            .axisBottom(x)
+            .tickFormat((d, i) => {
+              // Only return the label if we should show labels and this tick is within the first 60
+              return shouldShowLabels ? d : '';
+            })
+            .ticks(tickCount)
+        );
 
+      // Style x-axis labels with transition
       g.selectAll('.x-axis text')
-        .style('text-anchor', 'middle')
-        .style('font-size', `${fontSize}px`);
+        .style('text-anchor', 'end')
+        .attr('dx', '-.8em')
+        .attr('dy', '.15em')
+        .attr('transform', 'rotate(-45)')
+        .style('font-size', `${fontSize}px`)
+        .transition()
+        .duration(750)
+        .style('opacity', shouldShowLabels ? 1 : 0);
+
+      // Update the message visibility with transition
+      const messageText = g.selectAll('.axis-message').data([null]);
+
+      messageText
+        .enter()
+        .append('text')
+        .attr('class', 'axis-message')
+        .merge(messageText)
+        .attr('x', this.width / 2)
+        .attr('y', this.height + 40)
+        .attr('text-anchor', 'middle')
+        .style('fill', '#999')
+        .style('font-size', '12px')
+        .transition()
+        .duration(750)
+        .style('opacity', shouldShowLabels ? 0 : 1)
+        .text(shouldShowLabels ? '' : 'Hover over bars to see match details');
 
       // Y-axis update
       const yAxis = g.selectAll('.y-axis').data([null]);
@@ -266,7 +328,7 @@ class MetricsChart {
       g.selectAll('.grid-lines path').style('display', 'none');
 
       // Animated bars
-      const bars = g.selectAll('.bar').data(data, (d) => d.date);
+      const bars = g.selectAll('.bar').data(filteredData, (d) => d.date);
 
       bars
         .exit()
@@ -282,7 +344,7 @@ class MetricsChart {
         .append('rect')
         .attr('class', 'bar')
         .attr('x', (d) =>
-          x(this.formatDate(d.date) + this.getGameNumber(d.date, data))
+          x(this.formatDate(d.date) + this.getGameNumber(d.date, filteredData))
         )
         .attr('width', x.bandwidth())
         .attr('y', this.height) // Bottom
@@ -295,14 +357,16 @@ class MetricsChart {
         .transition()
         .duration(750)
         .attr('x', (d) =>
-          x(this.formatDate(d.date) + this.getGameNumber(d.date, data))
+          x(this.formatDate(d.date) + this.getGameNumber(d.date, filteredData))
         )
         .attr('width', x.bandwidth())
         .attr('y', (d) => y(d[metric]))
         .attr('height', (d) => this.height - y(d[metric]))
         .style('fill', (d) => (d.result ? '#4CAF50' : '#FF5252'));
 
-      const labels = g.selectAll('.metric-label').data(data, (d) => d.date);
+      const labels = g
+        .selectAll('.metric-label')
+        .data(filteredData, (d) => d.date);
       labels.exit().transition().duration(500).style('opacity', 0).remove();
 
       const newLabels = labels
@@ -314,7 +378,9 @@ class MetricsChart {
         .attr(
           'x',
           (d) =>
-            x(this.formatDate(d.date) + this.getGameNumber(d.date, data)) +
+            x(
+              this.formatDate(d.date) + this.getGameNumber(d.date, filteredData)
+            ) +
             x.bandwidth() / 2
         )
         .attr('y', this.height);
@@ -327,7 +393,9 @@ class MetricsChart {
         .attr(
           'x',
           (d) =>
-            x(this.formatDate(d.date) + this.getGameNumber(d.date, data)) +
+            x(
+              this.formatDate(d.date) + this.getGameNumber(d.date, filteredData)
+            ) +
             x.bandwidth() / 2
         )
         .attr('y', (d) => y(d[metric]) - 5)
@@ -365,11 +433,11 @@ class MetricsChart {
 
       // Add new overlays
       g.selectAll('.bar-overlay')
-        .data(data, (d) => d.date)
+        .data(filteredData, (d) => d.date)
         .join('rect')
         .attr('class', 'bar-overlay')
         .attr('x', (d) =>
-          x(this.formatDate(d.date) + this.getGameNumber(d.date, data))
+          x(this.formatDate(d.date) + this.getGameNumber(d.date, filteredData))
         )
         .attr('width', x.bandwidth())
         .attr('y', 0)
@@ -389,7 +457,7 @@ class MetricsChart {
             .html(
               `Date: ${self.formatDate(d.date)}${self.getGameNumber(
                 d.date,
-                data
+                filteredData
               )}<br/>
                Champion: ${d.champion}<br/>
                Opponent: ${d.opponent}<br/>

@@ -371,41 +371,99 @@ class ChartManager {
           // Add active class to clicked segment
           segment.classList.add('active');
 
-          // Position the slider
+          // Position the slider for metric control
           this.positionSlider(control);
+
+          // Ensure "All" button is highlighted and its slider is visible
+          const gameCountControl = document.querySelector(
+            '.game-count-control'
+          );
+          const allButton =
+            gameCountControl.querySelector('[data-value="all"]');
+          const gameCountSlider = gameCountControl.querySelector('.slider');
+
+          if (allButton && gameCountSlider) {
+            // Add active class to "All" button
+            allButton.classList.add('active');
+
+            // Show and position the slider
+            gameCountSlider.style.display = 'block';
+            const buttonRect = allButton.getBoundingClientRect();
+            const controlRect = gameCountControl.getBoundingClientRect();
+            gameCountSlider.style.width = `${buttonRect.width}px`;
+            gameCountSlider.style.left = `${
+              buttonRect.left - controlRect.left
+            }px`;
+          }
 
           // Update the chart with the new metric
           this.currentMetric = segment.getAttribute('data-value');
           localStorage.setItem('selectedMetric', this.currentMetric);
-          this.updateChart();
+          this.updateChart('all'); // Pass 'all' to ensure we show all games when switching metrics
         });
       });
 
-      // Game count segmented control
-      const gameCountSegments = document.querySelectorAll(
-        '#player-chart .game-count-control .segment'
-      );
+      // Game count control
+      const gameCountControl = document.querySelector('.game-count-control');
+      const customInput = document.getElementById('custom-game-count');
+      const applyButton = document.querySelector('.apply-custom-count');
+      const allButton = gameCountControl.querySelector('[data-value="all"]');
+      const slider = gameCountControl.querySelector('.slider');
 
-      gameCountSegments.forEach((segment) => {
-        segment.addEventListener('click', (event) => {
-          // Remove active class from all segments in this control
-          const control = segment.closest('.segmented-control');
-          control.querySelectorAll('.segment').forEach((s) => {
-            s.classList.remove('active');
-          });
+      if (gameCountControl) {
+        gameCountControl.addEventListener('click', (event) => {
+          if (!event.target.classList.contains('segment')) return;
 
-          // Add active class to clicked segment
-          segment.classList.add('active');
-
-          // Position the slider
-          this.positionSlider(control);
-
-          // Update the chart with the new game count filter
-          this.gameCountFilter = segment.getAttribute('data-value');
-          localStorage.setItem('gameCountFilter', this.gameCountFilter);
-          this.updateChart();
+          const value = event.target.getAttribute('data-value');
+          if (value === 'all') {
+            // Add active class to "All" button and show slider
+            allButton.classList.add('active');
+            if (slider) {
+              slider.style.display = 'block';
+              // Position the slider under the "All" button
+              const buttonRect = allButton.getBoundingClientRect();
+              const controlRect = gameCountControl.getBoundingClientRect();
+              slider.style.width = `${buttonRect.width}px`;
+              slider.style.left = `${buttonRect.left - controlRect.left}px`;
+            }
+            this.updateChart('all');
+          }
         });
-      });
+      }
+
+      if (applyButton) {
+        applyButton.addEventListener('click', () => {
+          const customValue = customInput.value;
+          if (customValue && !isNaN(customValue) && customValue > 0) {
+            // Remove active class from "All" button and hide slider
+            if (allButton) {
+              allButton.classList.remove('active');
+            }
+            if (slider) {
+              slider.style.display = 'none';
+            }
+            this.updateChart(customValue);
+          }
+        });
+      }
+
+      if (customInput) {
+        customInput.addEventListener('keypress', (event) => {
+          if (event.key === 'Enter') {
+            const customValue = customInput.value;
+            if (customValue && !isNaN(customValue) && customValue > 0) {
+              // Remove active class from "All" button and hide slider
+              if (allButton) {
+                allButton.classList.remove('active');
+              }
+              if (slider) {
+                slider.style.display = 'none';
+              }
+              this.updateChart(customValue);
+            }
+          }
+        });
+      }
 
       // Initialize sliders
       const segmentedControls = document.querySelectorAll(
@@ -463,7 +521,7 @@ class ChartManager {
     return metric.charAt(0).toUpperCase() + metric.slice(1);
   }
 
-  async updateChart() {
+  async updateChart(gameCount = 'all') {
     try {
       const playerDropdown = document.getElementById('player-dropdown');
       if (!playerDropdown) {
@@ -492,11 +550,22 @@ class ChartManager {
         return;
       }
 
-      data = this.applyFilters(data);
-      this.updateStats(data);
+      // Sort data by date in descending order for game count filter
+      let filteredData = [...data].sort((a, b) => b.date - a.date);
 
-      // Sort data by date
-      data.sort((a, b) => a.date - b.date);
+      // Apply game count filter
+      if (gameCount !== 'all') {
+        const count = parseInt(gameCount);
+        if (!isNaN(count) && count > 0) {
+          filteredData = filteredData.slice(0, count);
+        }
+      }
+
+      // Sort back to ascending order for display
+      filteredData.sort((a, b) => a.date - b.date);
+
+      // Update stats with filtered data
+      this.updateStats(filteredData);
 
       // Update chart
       if (this.chart) {
@@ -504,11 +573,16 @@ class ChartManager {
         const playerChartTab = document.getElementById('player-chart');
 
         if (playerChartTab && playerChartTab.classList.contains('active')) {
-          this.chart.update(data, playerName, this.currentMetric);
+          this.chart.update(
+            filteredData,
+            playerName,
+            this.currentMetric,
+            gameCount
+          );
         } else {
           console.log('Player chart tab not active, storing data for later');
           // Store data for when tab becomes active
-          this.chart.currentData = data;
+          this.chart.currentData = filteredData;
           this.chart.currentPlayerName = playerName;
           this.chart.currentMetric = this.currentMetric;
         }

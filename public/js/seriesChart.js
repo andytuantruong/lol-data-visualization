@@ -24,8 +24,8 @@ class SeriesChart {
     this.margin = {
       top: 40,
       right: isMobile ? 10 : 20,
-      bottom: isMobile ? 80 : 100,
-      left: isMobile ? 30 : isTablet ? 35 : 40,
+      bottom: isMobile ? 100 : 120,
+      left: isMobile ? 75 : isTablet ? 80 : 95,
     };
   }
 
@@ -217,17 +217,38 @@ class SeriesChart {
         .attr('class', 'x-axis')
         .attr('transform', `translate(0,${this.height})`);
 
+      // Calculate number of ticks based on width
+      const tickCount = Math.min(8, data.length); // Show max 8 ticks for series
+
+      // Create shortened labels for series
+      const shortLabels = xLabels.map((label) => {
+        const parts = label.split(':');
+        const date = parts[0];
+        const opponent = parts[1].split('(')[0].trim();
+        const games = parts[1].match(/\(.*\)/)[0];
+        return `${date}\n${opponent.substring(0, 12)}${games}`; // Truncate opponent name if too long
+      });
+
       xAxis
         .merge(xAxisEnter)
         .transition()
         .duration(750)
         .attr('transform', `translate(0,${this.height})`)
-        .call(d3.axisBottom(x));
+        .call(
+          d3
+            .axisBottom(x)
+            .tickFormat((d, i) => shortLabels[i])
+            .ticks(tickCount)
+        );
 
+      // Rotate and style the x-axis labels
       g.selectAll('.x-axis text')
         .style('text-anchor', 'end')
-        .attr('transform', 'translate(-10,0)rotate(-45)')
-        .style('font-size', `${fontSize}px`);
+        .attr('dx', '-.8em')
+        .attr('dy', '.15em')
+        .attr('transform', 'rotate(-45)')
+        .style('font-size', `${fontSize}px`)
+        .style('line-height', '1.2');
 
       // Y-axis update
       const yAxis = g.selectAll('.y-axis').data([null]);

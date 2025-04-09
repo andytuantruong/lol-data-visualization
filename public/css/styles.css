@@ -1025,28 +1025,77 @@ input[type='number'].filter-select {
   }
 }
 
-/* Game Count Control */
-.game-count-control {
-  max-width: 280px;
-  min-width: 200px;
+/* Update the game count control styles */
+.game-count-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   width: 100%;
 }
 
+.game-count-control {
+  width: auto;
+  min-width: unset;
+  flex-shrink: 0;
+}
+
 .game-count-control .segment {
-  padding: 8px 10px;
+  padding: 8px 16px;
   font-size: 13px;
   white-space: nowrap;
 }
 
+.custom-game-count {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-grow: 1;
+  max-width: 300px;
+}
+
+.custom-game-count input[type='number'] {
+  width: 80px;
+  padding: 6px 12px;
+  border: 1px solid #2c2c2c;
+  border-radius: 4px;
+  background: #1a1a1a;
+  color: #fff;
+  font-size: 14px;
+}
+
+.apply-custom-count {
+  padding: 6px 12px;
+  background: #2c2c2c;
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.apply-custom-count:hover {
+  background: #3c3c3c;
+}
+
+/* Responsive adjustments */
 @media (max-width: 768px) {
-  .game-count-control {
-    max-width: 100%;
-    min-width: unset;
+  .game-count-wrapper {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
   }
 
-  .game-count-control .segment {
-    padding: 8px 6px;
-    font-size: 12px;
+  .game-count-control {
+    width: 100px;
+  }
+
+  .custom-game-count {
+    max-width: none;
+  }
+
+  .custom-game-count input[type='number'] {
+    flex: 1;
   }
 }
 
@@ -1265,5 +1314,57 @@ input[type='number'].filter-select {
   #series-chart-container .tooltip {
     font-size: 12px;
     padding: 8px 10px;
+  }
+}
+
+.filter-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.custom-game-count {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.game-count-control {
+  margin-bottom: 4px;
+}
+
+.custom-game-count input[type='number'] {
+  width: 80px;
+  padding: 6px 12px;
+  border: 1px solid #2c2c2c;
+  border-radius: 4px;
+  background: #1a1a1a;
+  color: #fff;
+  font-size: 14px;
+}
+
+.apply-custom-count {
+  padding: 6px 12px;
+  background: #2c2c2c;
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.apply-custom-count:hover {
+  background: #3c3c3c;
+}
+
+@media (max-width: 768px) {
+  .custom-game-count {
+    width: 100%;
+  }
+
+  .custom-game-count input[type='number'] {
+    flex: 1;
   }
 }

@@ -92,11 +92,23 @@
             </div>
             <div class="filter-item">
               <label>Game Count:</label>
-              <div class="segmented-control game-count-control">
-                <div class="slider"></div>
-                <button class="segment active" data-value="all">All</button>
-                <button class="segment" data-value="last5">Last 5</button>
-                <button class="segment" data-value="last10">Last 10</button>
+              <div class="filter-controls">
+                <div class="segmented-control game-count-control">
+                  <div class="slider"></div>
+                  <button class="segment" data-value="all">All</button>
+                </div>
+                <div class="custom-game-count">
+                  <label for="custom-game-count">Custom:</label>
+                  <input
+                    type="number"
+                    id="custom-game-count"
+                    min="1"
+                    max="200"
+                    value="10"
+                    class="filter-select"
+                  />
+                  <button class="apply-custom-count">Apply</button>
+                </div>
               </div>
             </div>
           </div>
